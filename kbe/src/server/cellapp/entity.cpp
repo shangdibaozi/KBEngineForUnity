@@ -81,6 +81,7 @@ SCRIPT_GET_DECLARE("isOnGround",					pyGetIsOnGround,				0,							0)
 SCRIPT_GET_DECLARE("spaceID",						pyGetSpaceID,					0,							0)
 SCRIPT_GETSET_DECLARE("layer",						pyGetLayer,						pySetLayer,					0,		0)
 SCRIPT_GETSET_DECLARE("position",					pyGetPosition,					pySetPosition,				0,		0)
+SCRIPT_GETSET_DECLARE("isPushPosDirToClient",		pyGetIsPushPosDirToClient,		pySetIsPushPosDirToClient, 0,		0)
 SCRIPT_GETSET_DECLARE("direction",					pyGetDirection,					pySetDirection,				0,		0)
 SCRIPT_GETSET_DECLARE("topSpeed",					pyGetTopSpeed,					pySetTopSpeed,				0,		0)
 SCRIPT_GETSET_DECLARE("topSpeedY",					pyGetTopSpeedY,					pySetTopSpeedY,				0,		0)
@@ -105,6 +106,7 @@ ghostCell_(0),
 lastpos_(),
 position_(),
 pPyPosition_(NULL),
+isPushPosDirToClient_(true),
 direction_(),
 pPyDirection_(NULL),
 posChangedTime_(0),
@@ -1815,11 +1817,14 @@ int Entity::pySetPosition(PyObject *value)
 			posuid = msgInfo->msgid;
 	}
 
-	static PropertyDescription positionDescription(posuid, "VECTOR3", "position", ED_FLAG_ALL_CLIENTS, true, DataTypes::getDataType("VECTOR3"), false, "", 0, "", DETAIL_LEVEL_FAR);
-	if(pScriptModule_->usePropertyDescrAlias() && positionDescription.aliasID() == -1)
-		positionDescription.aliasID(ENTITY_BASE_PROPERTY_ALIASID_POSITION_XYZ);
+	if (isPushPosDirToClient_)
+	{
+		static PropertyDescription positionDescription(posuid, "VECTOR3", "position", ED_FLAG_ALL_CLIENTS, true, DataTypes::getDataType("VECTOR3"), false, "", 0, "", DETAIL_LEVEL_FAR);
+		if(pScriptModule_->usePropertyDescrAlias() && positionDescription.aliasID() == -1)
+			positionDescription.aliasID(ENTITY_BASE_PROPERTY_ALIASID_POSITION_XYZ);
 
-	onDefDataChanged(NULL, &positionDescription, value);
+		onDefDataChanged(NULL, &positionDescription, value);
+	}
 	return 0;
 }
 
@@ -1828,6 +1833,17 @@ PyObject* Entity::pyGetPosition()
 {
 	Py_INCREF(pPyPosition_);
 	return pPyPosition_;
+}
+
+PyObject* Entity::pyGetIsPushPosDirToClient()
+{
+	return PyBool_FromLong(isPushPosDirToClient_);
+}
+
+int Entity::pySetIsPushPosDirToClient(PyObject* value)
+{
+	isPushPosDirToClient_ = PyLong_AsLong(value) > 0;
+	return 0;
 }
 
 //-------------------------------------------------------------------------------------
@@ -1942,11 +1958,14 @@ int Entity::pySetDirection(PyObject *value)
 			diruid = msgInfo->msgid;
 	}
 
-	static PropertyDescription directionDescription(diruid, "VECTOR3", "direction", ED_FLAG_ALL_CLIENTS, true, DataTypes::getDataType("VECTOR3"), false, "", 0, "", DETAIL_LEVEL_FAR);
-	if(pScriptModule_->usePropertyDescrAlias() && directionDescription.aliasID() == -1)
-		directionDescription.aliasID(ENTITY_BASE_PROPERTY_ALIASID_DIRECTION_ROLL_PITCH_YAW);
+	if (isPushPosDirToClient_) 
+	{
+		static PropertyDescription directionDescription(diruid, "VECTOR3", "direction", ED_FLAG_ALL_CLIENTS, true, DataTypes::getDataType("VECTOR3"), false, "", 0, "", DETAIL_LEVEL_FAR);
+		if(pScriptModule_->usePropertyDescrAlias() && directionDescription.aliasID() == -1)
+			directionDescription.aliasID(ENTITY_BASE_PROPERTY_ALIASID_DIRECTION_ROLL_PITCH_YAW);
 
-	onDefDataChanged(NULL, &directionDescription, value);
+		onDefDataChanged(NULL, &directionDescription, value);
+	}
 
 	return 0;
 }

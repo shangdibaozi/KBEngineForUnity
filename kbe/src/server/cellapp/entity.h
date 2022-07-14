@@ -147,6 +147,10 @@ public:
 	INLINE void position(const Position3D& pos);
 	DECLARE_PY_GETSET_MOTHOD(pyGetPosition, pySetPosition);
 
+	INLINE bool isPositionPushToClient();
+	INLINE void isPositionPushToClient(bool flag);
+	DECLARE_PY_GETSET_MOTHOD(pyGetIsPushPosDirToClient, pySetIsPushPosDirToClient);
+
 	/** 
 		脚本获取和设置entity的方向 
 	*/
@@ -632,6 +636,7 @@ protected:
 	Position3D												lastpos_;
 	Position3D												position_;
 	script::ScriptVector3*									pPyPosition_;
+	bool													isPushPosDirToClient_;
 
 	// entity的当前方向
 	Direction3D												direction_;	
