@@ -223,6 +223,7 @@
     <ClInclude Include="client_sdk.h" />
     <ClInclude Include="client_sdk_ue4.h" />
     <ClInclude Include="client_sdk_unity.h" />
+    <ClInclude Include="client_sdk_unity_websocket.h" />
     <ClInclude Include="kbcmd.h" />
     <ClInclude Include="kbcmd_interface.h" />
     <ClInclude Include="kbcmd_interface_macros.h" />

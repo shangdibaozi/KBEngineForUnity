@@ -3,6 +3,7 @@
 #include "kbcmd.h"
 #include "client_sdk.h"
 #include "client_sdk_unity.h"	
+#include "client_sdk_unity_websocket.h"
 #include "client_sdk_ue4.h"
 #include "entitydef/entitydef.h"
 #include "entitydef/scriptdef_module.h"
@@ -52,6 +53,10 @@ ClientSDK* ClientSDK::createClientSDK(const std::string& type)
 	if (lowerType == "unity")
 	{
 		return new ClientSDKUnity();
+	}
+	else if (lowerType == "unity_websocket")
+	{
+		return new ClientSDKUnityWebSocket();
 	}
 	else if(lowerType == "ue4")
 	{
