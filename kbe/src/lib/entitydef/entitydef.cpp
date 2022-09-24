@@ -200,8 +200,16 @@ bool EntityDef::initialize(std::vector<PyTypeObject*>& scriptBaseTypes,
 			std::string moduleName = xml.get()->getKey(node);
 
 			ScriptDefModule* pScriptModule = registerNewScriptDefModule(moduleName);
+			const char* path = node->ToElement()->Attribute("path");
 
-			std::string deffile = defFilePath + moduleName + ".def";
+			std::string deffile = defFilePath;
+			if (path)
+			{
+				std::string spath = path;
+				deffile += spath + "/";
+			}
+
+			deffile += moduleName + ".def";
 			SmartPointer<XML> defxml(new XML());
 
 			if (!defxml->openSection(deffile.c_str()))
