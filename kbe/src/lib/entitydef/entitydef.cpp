@@ -2286,9 +2286,17 @@ bool EntityDef::loadAllEntityScriptModules(std::string entitiesPath,
 	XML_FOR_BEGIN(node)
 	{
 		std::string moduleName = xml.get()->getKey(node);
+		const char* cpath = node->ToElement()->Attribute("path");
+		std::string path = "";
+		if (cpath)
+		{
+			path = cpath;
+			path += ".";
+		}
+		std::string fpath = path + moduleName;
 		ScriptDefModule* pScriptModule = findScriptModule(moduleName.c_str());
 
-		PyObject* pyModule = loadScriptModule(moduleName);
+		PyObject* pyModule = loadScriptModule(fpath);
 		if (pyModule == NULL)
 		{
 			// 是否加载这个模块 （取决于是否在def文件中定义了与当前组件相关的方法或者属性）

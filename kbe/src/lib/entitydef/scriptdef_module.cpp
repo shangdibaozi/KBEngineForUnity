@@ -343,7 +343,7 @@ void ScriptDefModule::autoMatchCompOwn()
 	int assertionHasCell = -1;
 
 	std::string entitiesFile = Resmgr::getSingleton().getPyUserScriptsPath() + "entities.xml";
-
+	std::string path = "";
 	// 打开这个entities.xml文件
 	// 允许纯脚本定义，则可能没有这个文件
 	if (access(entitiesFile.c_str(), 0) == 0)
@@ -356,13 +356,19 @@ void ScriptDefModule::autoMatchCompOwn()
 		TiXmlNode* node = xml->getRootNode();
 		if (node == NULL)
 			return;
-
+		
 		// 开始遍历所有的entity节点
 		XML_FOR_BEGIN(node)
 		{
 			std::string moduleName = xml.get()->getKey(node);
 			if (name_ == moduleName)
 			{
+				// 拿到标签上的相对路径
+				const char* cpath = node->ToElement()->Attribute("path");
+				if (cpath)
+				{
+					path = cpath;
+				}
 				const char* val = node->ToElement()->Attribute("hasClient");
 				if (val)
 				{
@@ -413,7 +419,7 @@ void ScriptDefModule::autoMatchCompOwn()
 		EntityDef::md5().append((void*)&assertionHasClient, sizeof(int));
 	}
 
-	std::string fmodule = "scripts/client/" + name_ + ".py";
+	std::string fmodule = "scripts/client/" + path + "/" + name_ + ".py";
 	std::string fmodule_pyc = fmodule + "c";
 	if(Resmgr::getSingleton().matchRes(fmodule) != fmodule ||
 		Resmgr::getSingleton().matchRes(fmodule_pyc) != fmodule_pyc)
@@ -456,7 +462,7 @@ void ScriptDefModule::autoMatchCompOwn()
 		return;
 	}
 
-	fmodule = "scripts/base/" + name_ + ".py";
+	fmodule = "scripts/base/" + path + "/" + name_ + ".py";
 	fmodule_pyc = fmodule + "c";
 	if(Resmgr::getSingleton().matchRes(fmodule) != fmodule ||
 		Resmgr::getSingleton().matchRes(fmodule_pyc) != fmodule_pyc)
@@ -492,7 +498,7 @@ void ScriptDefModule::autoMatchCompOwn()
 		}
 	}
 
-	fmodule = "scripts/cell/" + name_ + ".py";
+	fmodule = "scripts/cell/" + path + "/" + name_ + ".py";
 	fmodule_pyc = fmodule + "c";
 	if(Resmgr::getSingleton().matchRes(fmodule) != fmodule ||
 		Resmgr::getSingleton().matchRes(fmodule_pyc) != fmodule_pyc)
