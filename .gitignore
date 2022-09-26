@@ -8162,3 +8162,5 @@ kbengine_demos_assets-def/.vscode/ipch/6f826720859d1530/mmap_address.bin
 kbengine_demos_assets-def/.vscode/ipch/803b7eea0fbefcc9/mmap_address.bin
 
 /kbe/src/.vs
+/kbe/bin/server-release
+/kbe/bin/server-debug
