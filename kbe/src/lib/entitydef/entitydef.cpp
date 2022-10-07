@@ -257,6 +257,111 @@ bool EntityDef::initialize(std::vector<PyTypeObject*>& scriptBaseTypes,
 		initializeWatcher();
 }
 
+bool EntityDef::initializeForSDK(std::vector<PyTypeObject*>& scriptBaseTypes, COMPONENT_TYPE loadComponentType)
+{
+	__loadComponentType = loadComponentType;
+	__scriptBaseTypes = scriptBaseTypes;
+
+	__entitiesPath = Resmgr::getSingleton().getPyUserScriptsPath();
+
+	g_entityFlagMapping["CELL"] = ED_FLAG_CELL_PUBLIC;
+	g_entityFlagMapping["CELL_AND_CLIENT"] = ED_FLAG_CELL_PUBLIC_AND_OWN;
+	g_entityFlagMapping["CELL_AND_CLIENTS"] = ED_FLAG_ALL_CLIENTS;
+	g_entityFlagMapping["CELL_AND_OTHER_CLIENTS"] = ED_FLAG_OTHER_CLIENTS;
+	g_entityFlagMapping["BASE_AND_CLIENT"] = ED_FLAG_BASE_AND_CLIENT;
+	g_entityFlagMapping["BASE"] = ED_FLAG_BASE;
+
+	g_entityFlagMapping["CELL_PUBLIC"] = ED_FLAG_CELL_PUBLIC;
+	g_entityFlagMapping["CELL_PRIVATE"] = ED_FLAG_CELL_PRIVATE;
+	g_entityFlagMapping["ALL_CLIENTS"] = ED_FLAG_ALL_CLIENTS;
+	g_entityFlagMapping["CELL_PUBLIC_AND_OWN"] = ED_FLAG_CELL_PUBLIC_AND_OWN;
+
+	g_entityFlagMapping["OTHER_CLIENTS"] = ED_FLAG_OTHER_CLIENTS;
+	g_entityFlagMapping["OWN_CLIENT"] = ED_FLAG_OWN_CLIENT;
+
+	std::string entitiesFile = __entitiesPath + "entities.xml";
+	std::string defFilePath = __entitiesPath + "entity_defs/";
+
+	// 初始化数据类别
+	// assets/scripts/entity_defs/types.xml
+	if (!DataTypes::initialize(defFilePath + "types.xml"))
+		return false;
+
+	// 打开这个entities.xml文件
+	// 允许纯脚本定义，则可能没有这个文件
+	if (access(entitiesFile.c_str(), 0) == 0)
+	{
+		SmartPointer<XML> xml(new XML());
+		if (!xml->openSection(entitiesFile.c_str()))
+			return false;
+
+		// 获得entities.xml根节点, 如果没有定义一个entity那么直接返回true
+		TiXmlNode* node = xml->getRootNode();
+		if (node == NULL)
+			return true;
+
+		// 开始遍历所有的entity节点
+		XML_FOR_BEGIN(node)
+		{
+			std::string moduleName = xml.get()->getKey(node);
+
+			ScriptDefModule* pScriptModule = registerNewScriptDefModule(moduleName);
+			const char* path = node->ToElement()->Attribute("path");
+
+			std::string deffile = defFilePath;
+			if (path)
+			{
+				std::string spath = path;
+				deffile += spath + "/";
+			}
+
+			deffile += moduleName + ".def";
+			SmartPointer<XML> defxml(new XML());
+
+			if (!defxml->openSection(deffile.c_str()))
+				return false;
+
+			TiXmlNode* defNode = defxml->getRootNode();
+			if (defNode == NULL)
+			{
+				// root节点下没有子节点了
+				continue;
+			}
+
+			// 加载def文件中的定义
+			if (!loadDefInfo(defFilePath, moduleName, defxml.get(), defNode, pScriptModule))
+			{
+				ERROR_MSG(fmt::format("EntityDef::initialize: failed to load entity({}) module!\n",
+					moduleName.c_str()));
+
+				return false;
+			}
+
+			// 尝试在主entity文件中加载detailLevel数据
+			if (!loadDetailLevelInfo(defFilePath, moduleName, defxml.get(), defNode, pScriptModule))
+			{
+				ERROR_MSG(fmt::format("EntityDef::initialize: failed to load entity({}) DetailLevelInfo!\n",
+					moduleName.c_str()));
+
+				return false;
+			}
+
+			pScriptModule->onLoaded();
+		}
+		XML_FOR_END(node);
+	}
+
+	/*if (!script::entitydef::initialize())
+		return false;*/
+
+	EntityDef::md5().final();
+
+	if (loadComponentType == DBMGR_TYPE)
+		return true;
+
+	return true;
+}
+
 //-------------------------------------------------------------------------------------
 ScriptDefModule* EntityDef::registerNewScriptDefModule(const std::string& moduleName)
 {

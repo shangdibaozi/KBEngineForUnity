@@ -184,7 +184,7 @@ int process_make_client_sdk(int argc, char* argv[], const std::string clientType
 	}
 
 	std::vector<PyTypeObject*> scriptBaseTypes;
-	if (!EntityDef::initialize(scriptBaseTypes, g_componentType))
+	if (!EntityDef::initializeForSDK(scriptBaseTypes, g_componentType))
 	{
 		ERROR_MSG("app::initialize(): EntityDef initialization failed!\n");
 

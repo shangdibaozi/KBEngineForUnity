@@ -40,8 +40,12 @@ public:
 	/** 
 		初始化
 	*/
-	static bool initialize(std::vector<PyTypeObject*>& scriptBaseTypes, 
-		COMPONENT_TYPE loadComponentType);
+	static bool initialize(std::vector<PyTypeObject*>& scriptBaseTypes, COMPONENT_TYPE loadComponentType);
+
+	/**
+		初始化生成sdk需要的数据
+	*/
+	static bool initializeForSDK(std::vector<PyTypeObject*>& scriptBaseTypes, COMPONENT_TYPE loadComponentType);
 
 	static bool finalise(bool isReload = false);
 
