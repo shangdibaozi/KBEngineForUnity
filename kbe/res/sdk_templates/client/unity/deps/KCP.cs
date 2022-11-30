@@ -310,7 +310,7 @@ namespace Deps
                 int fragment = 0;
                 var seg = node.Value;
                 next = node.Next;
-                
+
                 if (buffer != null)
                 {
                     Buffer.BlockCopy(seg.data, 0, buffer, offset, seg.data.Length);
@@ -584,7 +584,7 @@ namespace Deps
                     repeat = 1;
                     break;
                 }
-                if (_itimediff(sn, seg.sn) > 0) 
+                if (_itimediff(sn, seg.sn) > 0)
                 {
                     break;
                 }
@@ -1030,7 +1030,7 @@ namespace Deps
             if (updated_ == 0)
                 return current;
 
-            if (_itimediff(current, ts_flush) >= 10000 || 
+            if (_itimediff(current, ts_flush) >= 10000 ||
                 _itimediff(current, ts_flush) < -10000)
             {
                 ts_flush = current;

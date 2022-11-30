@@ -1,11 +1,11 @@
-﻿namespace KBEngine
+﻿using System;
+using System.IO;
+using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+namespace KBEngine
 {
-    using System;
-    using System.IO;
-    using System.Text;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.Security.Cryptography;
 
     public class Blowfish
     {
@@ -219,7 +219,7 @@
         public Blowfish(byte[] key)
         {
             _key = key;
-             init();
+            init();
         }
 
         public Blowfish(string key) : this(Encoding.Unicode.GetBytes(key))
@@ -245,7 +245,7 @@
 
         private void init()
         {
-            if(_key.Length < MIN_KEY_SIZE || _key.Length > MAX_KEY_SIZE)
+            if (_key.Length < MIN_KEY_SIZE || _key.Length > MAX_KEY_SIZE)
             {
                 _isGood = false;
                 Dbg.ERROR_MSG("Blowfish::init: invalid length " + _key.Length);
@@ -337,7 +337,7 @@
 
             uint xl, xr;
             UInt64 prevBlock = 0;
-            
+
             for (int i = 0; i < length; i += 8)
             {
                 if (prevBlock != 0)
@@ -359,7 +359,7 @@
                 {
                     prevBlock = BitConverter.ToUInt64(data, i);
                 }
-                
+
                 // Encode the data in 8 byte blocks.
                 xl = (uint)((data[i] << 24) | (data[i + 1] << 16) | (data[i + 2] << 8) | data[i + 3]);
                 xr = (uint)((data[i + 4] << 24) | (data[i + 5] << 16) | (data[i + 6] << 8) | data[i + 7]);
@@ -454,7 +454,7 @@
                 data[index + 6] = (byte)(xr >> 8);
                 data[index + 7] = (byte)(xr);
 
-                if(prevBlock != 0)
+                if (prevBlock != 0)
                 {
                     UInt64 ret = BitConverter.ToUInt64(data, index) ^ prevBlock;
 

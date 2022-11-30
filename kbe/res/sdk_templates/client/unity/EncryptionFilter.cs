@@ -1,10 +1,10 @@
-﻿namespace KBEngine
-{
-    using UnityEngine;
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
+﻿using UnityEngine;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 
+namespace KBEngine
+{
     public abstract class EncryptionFilter
     {
         public abstract void encrypt(MemoryStream stream);
@@ -35,6 +35,7 @@
 
         ~BlowfishFilter()
         {
+            
         }
 
         public  byte[] key()
@@ -50,8 +51,8 @@
                 padSize = (int)(BLOCK_SIZE - (stream.length() % BLOCK_SIZE));
                 stream.wpos += padSize;
 
-				if(stream.wpos > MemoryStream.BUFFER_MAX)
-					Debug.LogError("BlowfishFilter::encrypt: stream.wpos(" + stream.wpos + ") > MemoryStream.BUFFER_MAX(" + MemoryStream.BUFFER_MAX + ")!");
+                if(stream.wpos > MemoryStream.BUFFER_MAX)
+                    Debug.LogError("BlowfishFilter::encrypt: stream.wpos(" + stream.wpos + ") > MemoryStream.BUFFER_MAX(" + MemoryStream.BUFFER_MAX + ")!");
             }
 
             _blowfish.encipher(stream.data(), (int)stream.length());

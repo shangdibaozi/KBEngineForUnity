@@ -178,11 +178,11 @@ bool ClientSDKUnity::writeServerErrorDescrsModuleBegin()
 	sourcefileBody_ = headerBody;
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", "");
 
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
 
 	sourcefileBody_ += fmt::format("\tpublic struct {}\n\t{{\n\t\tpublic string name;\n\t\tpublic string descr;\n\t\tpublic UInt16 id;\n", "ServerErr");
 	sourcefileBody_ += "\t}";
@@ -224,13 +224,13 @@ bool ClientSDKUnity::writeEngineMessagesModuleBegin()
 	sourcefileBody_ = headerBody;
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", "");
 
-	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 
-	sourcefileBody_ += "\tusing MessageID = System.UInt16;\n\n";
+	sourcefileBody_ += "using MessageID = System.UInt16;\n\n";
+	sourcefileBody_ += "namespace KBEngine\n{\n";
 
 	sourcefileBody_ += "\t// engine-c++ messages\n\n";
 	sourcefileBody_ += fmt::format("\tpublic class {}\n\t{{\n", "Message");
@@ -390,11 +390,11 @@ bool ClientSDKUnity::writeEntityDefsModuleBegin()
 	sourcefileBody_ = headerBody;
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", "");
 
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
 
 	sourcefileBody_ += fmt::format("\tpublic class {}\n\t{{\n", "EntityDef");
 
@@ -563,11 +563,11 @@ bool ClientSDKUnity::writeEntityCallBegin(ScriptDefModule* pScriptDefModule)
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", fmt::format("\t\n",
 		sourcefileName_));
 
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
 
 	sourcefileBody_ += std::string("\t// defined in */scripts/entity_defs/") + pScriptDefModule->getName() + ".def\n";
 	return true;
@@ -757,11 +757,11 @@ bool ClientSDKUnity::writeCustomDataTypesBegin()
 	sourcefileBody_ = headerBody;
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", "");
 
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
 	return true;
 }
 
@@ -1403,11 +1403,11 @@ bool ClientSDKUnity::writeTypesBegin()
 	sourcefileBody_ = headerBody;
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", "");
 
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
 
 	sourcefileBody_ += "\n\n\t// defined in */scripts/entity_defs/types.xml\n\n";
 	return true;
@@ -1746,11 +1746,11 @@ bool ClientSDKUnity::writeEntityModuleBegin(ScriptDefModule* pEntityScriptDefMod
 	strutil::kbe_replace(sourcefileBody_, "#REPLACE#", fmt::format("\tPlease inherit this module, such as: (class {} : {}{})\n",
 		pEntityScriptDefModule->getName(), pEntityScriptDefModule->getName(), moduleSuffix));
 
+	sourcefileBody_ += "using UnityEngine;\n";
+	sourcefileBody_ += "using System;\n";
+	sourcefileBody_ += "using System.Collections;\n";
+	sourcefileBody_ += "using System.Collections.Generic;\n\n";
 	sourcefileBody_ += "namespace KBEngine\n{\n";
-	sourcefileBody_ += "\tusing UnityEngine;\n";
-	sourcefileBody_ += "\tusing System;\n";
-	sourcefileBody_ += "\tusing System.Collections;\n";
-	sourcefileBody_ += "\tusing System.Collections.Generic;\n\n";
 
 	sourcefileBody_ += std::string("\t// defined in */scripts/entity_defs/") + pEntityScriptDefModule->getName() + ".def\n";
 

@@ -1,12 +1,12 @@
+using UnityEngine;
+using UnityEditor;
+using System.Collections;
+using System;
+using System.IO;
+using KBEngine;
 namespace KBEngine
 {
 #if UNITY_EDITOR
-    using UnityEngine;
-    using UnityEditor;
-    using System.Collections;
-    using System;
-    using System.IO;
-    using KBEngine;
 
     public class ClientSDKUpdater : MonoBehaviour
     {
