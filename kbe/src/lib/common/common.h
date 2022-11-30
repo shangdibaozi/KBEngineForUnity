@@ -374,14 +374,15 @@ inline bool validName(const char* name, int size)
 	if(size >= 256)
 		return false;
 
-	for(int i=0; i<size; ++i)
+	// 不对字符内容进行限制
+	/*for(int i=0; i<size; ++i)
 	{
 		char ch = name[i];
 		if((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '_'))
 			continue;
 
 		return false;
-	}
+	}*/
 
 	return true;
 }
