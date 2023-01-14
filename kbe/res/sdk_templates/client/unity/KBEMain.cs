@@ -34,16 +34,24 @@ public class KBEMain : MonoBehaviour
     public bool automaticallyUpdateSDK = true;
 
     protected virtual void Awake() 
-     {
+    {
         DontDestroyOnLoad(transform.gameObject);
-     }
+    }
  
     // Use this for initialization
-    protected virtual void Start () 
+    protected virtual void Start()
     {
         MonoBehaviour.print("clientapp::start()");
-        installEvents();
-        initKBEngine();
+        Init();
+    }
+
+    protected void Init()
+    {
+        if(gameapp == null)
+        {
+            installEvents();
+            initKBEngine();
+        }
     }
     
     public virtual void installEvents()
