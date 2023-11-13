@@ -89,11 +89,11 @@
 		
 		// 服务端与客户端的版本号以及协议MD5
 		public string serverVersion = "";
-		public string clientVersion = "2.5.10";
+		public string clientVersion = "@{KBE_VERSION}";
 		public string serverScriptVersion = "";
-		public string clientScriptVersion = "0.1.0";
-		public string serverProtocolMD5 = "EB8AE9F114C8797B1E70E1A629686A27";
-		public string serverEntitydefMD5 = "E755EF59C8D64EBD7D6673BB3120F46E";
+		public string clientScriptVersion = "@{KBE_SCRIPT_VERSION}";
+		public string serverProtocolMD5 = "@{KBE_SERVER_PROTO_MD5}";
+		public string serverEntitydefMD5 = "@{KBE_SERVER_ENTITYDEF_MD5}";
 		
 		// 当前玩家的实体id与实体类别
 		public UInt64 entity_uuid = 0;
