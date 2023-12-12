@@ -218,10 +218,13 @@
 			if (valid())
 				throw new InvalidOperationException("Have already connected!");
 
-			if (!(new Regex(@"((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))")).IsMatch(ip))
+			if (!KBEngineApp.isWebSocket)
 			{
-				IPHostEntry ipHost = Dns.GetHostEntry(ip);
-				ip = ipHost.AddressList[0].ToString();
+				if (!(new Regex(@"((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))")).IsMatch(ip))
+				{
+					IPHostEntry ipHost = Dns.GetHostEntry(ip);
+					ip = ipHost.AddressList[0].ToString();
+				}
 			}
 
             AsyncConnectMethod asyncConnectMethod = new AsyncConnectMethod(this._asyncConnect);

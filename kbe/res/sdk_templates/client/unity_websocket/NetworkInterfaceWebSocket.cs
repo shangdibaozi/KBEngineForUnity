@@ -35,15 +35,15 @@ namespace KBEngine
 
         protected override WebSocket createWebSocket(ConnectState state)
         {
-            
             string url;
+            string connectPort = state.connectPort > 0 ? $":{state.connectPort}" : "";
             if(state.connectIP.StartsWith("ws://") || state.connectIP.StartsWith("wss://"))
             {
-                url = $"{state.connectIP}:${state.connectPort}";
+                url = $"{state.connectIP}{connectPort}";
             }
             else
             {
-                url = $"ws://{state.connectIP}:{state.connectPort}";
+                url = $"ws://{state.connectIP}{connectPort}";
             }
             _websocket = new WebSocket(url);
             _websocket.OnOpen += OnOpen;
@@ -87,7 +87,7 @@ namespace KBEngine
 #if !UNITY_WEBGL || UNITY_EDITOR
             if(_websocket != null)
             {
-                // ²»¼ÓÕâ¸öOnMessageÎÞ·¨ÊÕµ½ÏûÏ¢
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½OnMessageï¿½Þ·ï¿½ï¿½Õµï¿½ï¿½ï¿½Ï¢
                 _websocket.DispatchMessageQueue();
             }
 #endif
