@@ -79,6 +79,7 @@ namespace KBEngine
         void OnClose(WebSocketCloseCode code)
         {
             Debug.Log("WebSocket::Connection closed!");
+            close();
         }
 
         public override void process()
@@ -87,7 +88,7 @@ namespace KBEngine
 #if !UNITY_WEBGL || UNITY_EDITOR
             if(_websocket != null)
             {
-                // �������OnMessage�޷��յ���Ϣ
+                // 不加这个OnMessage无法收到消息
                 _websocket.DispatchMessageQueue();
             }
 #endif

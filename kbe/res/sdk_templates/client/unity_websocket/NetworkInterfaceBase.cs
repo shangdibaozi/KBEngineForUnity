@@ -101,6 +101,12 @@
 				Event.fireAll(EventOutTypes.onDisconnected);
 			}
 
+			if (_websocket != null)
+			{
+				_websocket = null;
+				Event.fireAll(EventOutTypes.onDisconnected);
+			}
+
 			_socket = null;
 			connected = false;
 		}

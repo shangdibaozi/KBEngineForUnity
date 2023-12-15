@@ -10,10 +10,10 @@ namespace KBEngine
     {
         private byte[] _buffer;
 
-        // socket向缓冲区写的起始位置
+        // socket鍚戠紦鍐插尯鍐欑殑璧峰浣嶇疆
         int _wpos = 0;
 
-        // 主线程读取数据的起始位置
+        // 涓荤嚎绋嬭鍙栨暟鎹殑璧峰浣嶇疆
         int _rpos = 0;
 
         public PacketReceiverWebSocket(NetworkInterfaceBase networkInterface) : base(networkInterface)
