@@ -1,15 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.Net.Sockets;
 using UnityEngine;
 using NativeWebSocket;
-using System.Threading.Tasks;
-using System;
 
 namespace KBEngine
 {
     public class NetworkInterfaceWebSocket : NetworkInterfaceBase
     {
+        private string url;
         ConnectState state;
         private MemoryStream stream = new MemoryStream();
 
@@ -35,7 +32,6 @@ namespace KBEngine
 
         protected override WebSocket createWebSocket(ConnectState state)
         {
-            string url;
             string connectPort = state.connectPort > 0 ? $":{state.connectPort}" : "";
             if(state.connectIP.StartsWith("ws://") || state.connectIP.StartsWith("wss://"))
             {
@@ -54,13 +50,13 @@ namespace KBEngine
             return _websocket;
         }
 
-        async protected override void onAsyncConnect(ConnectState state)
+        protected override async void onAsyncConnect(ConnectState state)
         {
-            Debug.Log($"WebSocket::onAsyncConnect {state.websocket.State}");
+            Debug.Log($"WebSocket::onAsyncConnect {state.websocket.State} {url}");
             await state.websocket.Connect();
         }
 
-        async public void Connect()
+        public async void Connect()
         {
             await state.websocket.Connect();
         }
@@ -78,7 +74,7 @@ namespace KBEngine
 
         void OnClose(WebSocketCloseCode code)
         {
-            Debug.Log("WebSocket::Connection closed!");
+            Debug.Log($"WebSocket::Connection closed! {url}");
             close();
         }
 

@@ -4,11 +4,7 @@
 	using System;
 	using System.Net.Sockets;
 	using System.Net;
-	using System.Collections;
-	using System.Collections.Generic;
-	using System.Text;
 	using System.Text.RegularExpressions;
-	using System.Threading;
 
 	using MessageID = System.UInt16;
 	using MessageLength = System.UInt16;
@@ -36,7 +32,6 @@
 		protected EncryptionFilter _filter = null;
 
 		public bool connected = false;
-		
 		public class ConnectState
 		{
 			// for connect
@@ -58,7 +53,6 @@
 
 		~NetworkInterfaceBase()
 		{
-			Dbg.DEBUG_MSG("NetworkInterfaceBase::~NetworkInterfaceBase(), destructed!!!");
 			reset();
 		}
 
@@ -83,11 +77,17 @@
 				}
 				catch (Exception e)
 				{
-
+					Dbg.ERROR_MSG(e);
 				}
 
 				_socket.Close(0);
 				_socket = null;
+			}
+
+			if (_websocket != null)
+			{
+				_websocket.Close();
+				_websocket = null;
 			}
 		}
 		
@@ -106,8 +106,7 @@
 				_websocket = null;
 				Event.fireAll(EventOutTypes.onDisconnected);
 			}
-
-			_socket = null;
+			
 			connected = false;
 		}
 

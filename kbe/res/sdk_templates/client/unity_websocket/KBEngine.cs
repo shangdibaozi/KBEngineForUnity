@@ -179,14 +179,6 @@
 		{
 			_filter = null;
 			Messages.init();
-			if (isWebSocket)
-			{
-				_networkInterface = new NetworkInterfaceWebSocket();
-			}
-			else
-			{
-				_networkInterface = new NetworkInterfaceTCP();
-			}
 		}
 		
 		void installEvents()
