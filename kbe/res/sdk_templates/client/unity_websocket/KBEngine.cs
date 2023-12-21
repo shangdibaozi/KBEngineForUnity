@@ -25,6 +25,7 @@
 	public class KBEngineApp
 	{
 		public static bool isWebSocket = false;
+		public static bool wssHasPort = false;
 		public static KBEngineApp app = null;
 		private NetworkInterfaceBase _networkInterface = null;
 		
