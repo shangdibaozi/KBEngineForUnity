@@ -361,6 +361,7 @@ BEGIN_MESSAGE_MAP(CguiconsoleDlg, CDialog)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE1, &CguiconsoleDlg::OnNMRClickTree1)
 	ON_COMMAND(ID_32772, &CguiconsoleDlg::OnMenu_Update)
 	ON_COMMAND(ID_32773, &CguiconsoleDlg::OnMenu_HotUpdate_Base_System)
+	ON_COMMAND(ID_32774, &CguiconsoleDlg::OnMenu_ShowEntities)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB1, &CguiconsoleDlg::OnTcnSelchangeTab1)
 	ON_NOTIFY(NM_CLICK, IDC_TREE1, &CguiconsoleDlg::OnNMClickTree1)
 	ON_COMMAND(ID_32771, &CguiconsoleDlg::OnConnectRemoteMachine)
@@ -1490,6 +1491,12 @@ void CguiconsoleDlg::OnMenu_HotUpdate_Base_System()
 	commitPythonCommand(str);
 	CString str1("hotupdate.reload_base_systems()");
 	commitPythonCommand(str1);
+}
+
+void CguiconsoleDlg::OnMenu_ShowEntities()
+{
+	CString str("KBEngine.entities.items()");
+	commitPythonCommand(str);
 }
 
 void CguiconsoleDlg::autoShowWindow()

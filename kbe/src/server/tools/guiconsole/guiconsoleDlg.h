@@ -106,6 +106,7 @@ public:
 	
 	afx_msg void OnMenu_Update();
 	afx_msg void OnMenu_HotUpdate_Base_System();
+	afx_msg void OnMenu_ShowEntities();
 
 	afx_msg void OnToolBar_Find();
 	afx_msg void OnToolBar_StartServer();

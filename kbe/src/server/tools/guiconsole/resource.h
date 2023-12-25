@@ -74,11 +74,13 @@
 #define ID_32771                        32771
 #define ID_32772                        32772
 #define ID_32773                        32773
-#define ID_HELP_ABOUT                   32773
-#define ID_FILE_CLOSE32774              32774
-#define ID_BUTTON32780                  32780
-#define ID_BUTTON32783                  32783
-#define ID_BUTTON32784                  32784
+#define ID_32774						32774
+
+#define ID_HELP_ABOUT                   33773
+#define ID_FILE_CLOSE32774              33774
+#define ID_BUTTON32780                  33780
+#define ID_BUTTON32783                  33783
+#define ID_BUTTON32784                  33784
 
 // Next default values for new objects
 // 

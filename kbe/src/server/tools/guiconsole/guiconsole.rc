@@ -353,6 +353,7 @@ BEGIN
         MENUITEM "add server",                  ID_32771
         MENUITEM "update",                      ID_32772
         MENUITEM "update base system"           ID_32773
+        MENUITEM "KBEngine.entities.items()"    ID_32774
     END
 END
 
