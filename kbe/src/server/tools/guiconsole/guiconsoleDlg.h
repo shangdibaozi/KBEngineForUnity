@@ -105,6 +105,7 @@ public:
 	afx_msg void OnNMRClickTree1(NMHDR *pNMHDR, LRESULT *pResult);
 	
 	afx_msg void OnMenu_Update();
+	afx_msg void OnMenu_HotUpdate_Base_System();
 
 	afx_msg void OnToolBar_Find();
 	afx_msg void OnToolBar_StartServer();

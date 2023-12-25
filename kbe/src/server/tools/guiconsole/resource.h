@@ -73,6 +73,7 @@
 #define IDC_DEL_IPMAPPING               1045
 #define ID_32771                        32771
 #define ID_32772                        32772
+#define ID_32773                        32773
 #define ID_HELP_ABOUT                   32773
 #define ID_FILE_CLOSE32774              32774
 #define ID_BUTTON32780                  32780

@@ -360,6 +360,7 @@ BEGIN_MESSAGE_MAP(CguiconsoleDlg, CDialog)
 	ON_WM_SIZE()
 	ON_NOTIFY(NM_RCLICK, IDC_TREE1, &CguiconsoleDlg::OnNMRClickTree1)
 	ON_COMMAND(ID_32772, &CguiconsoleDlg::OnMenu_Update)
+	ON_COMMAND(ID_32773, &CguiconsoleDlg::OnMenu_HotUpdate_Base_System)
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB1, &CguiconsoleDlg::OnTcnSelchangeTab1)
 	ON_NOTIFY(NM_CLICK, IDC_TREE1, &CguiconsoleDlg::OnNMClickTree1)
 	ON_COMMAND(ID_32771, &CguiconsoleDlg::OnConnectRemoteMachine)
@@ -1475,6 +1476,20 @@ void CguiconsoleDlg::OnMenu_Update()
 	Components::getSingleton().delComponent(Components::ANY_UID, LOGGER_TYPE, 0, true, false);
 	Components::getSingleton().delComponent(Components::ANY_UID, BOTS_TYPE, 0, true, false);
 	::SetTimer(m_hWnd, 2, 100, NULL);
+}
+
+void CguiconsoleDlg::OnMenu_HotUpdate_Base_System()
+{
+	if (getTreeItemComponent(m_tree.GetSelectedItem()) != BASEAPP_TYPE)
+	{
+		::AfxMessageBox(L"Not select baseapp!");
+		return;
+	}
+
+	CString str("import hotupdate");
+	commitPythonCommand(str);
+	CString str1("hotupdate.reload_base_systems()");
+	commitPythonCommand(str1);
 }
 
 void CguiconsoleDlg::autoShowWindow()
