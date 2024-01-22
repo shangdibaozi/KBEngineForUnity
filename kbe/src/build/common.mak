@@ -283,6 +283,7 @@ CXXFLAGS += -Wno-invalid-offsetof
 CXXFLAGS += -Werror
 CXXFLAGS += -std=c++11
 
+CPPFLAGS += -Wno-format-truncation -Wno-nonnull
 CPPFLAGS += -DKBE_SERVER -MMD -DKBE_CONFIG=\"${KBE_CONFIG}\"
 
 ifeq (,$(findstring SingleThreaded,$(KBE_CONFIG)))
