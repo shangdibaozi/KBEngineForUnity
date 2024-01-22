@@ -607,7 +607,8 @@ bool ScriptDefModule::addPropertyDescription(const char* attrName,
 		componentPropertyDescr_[attrName] = propertyDescription;
 
 	// 判断是否是存储属性， 是就存储到persistentPropertyDescr_
-	if(propertyDescription->isPersistent())
+	// 如果是array类型，即使persistent为false也为其生成或修改对应的表
+	if(propertyDescription->isPersistent() || propertyDescription->getDataType()->type() == DATA_TYPE_FIXEDARRAY)
 	{
 		PROPERTYDESCRIPTION_MAP::const_iterator pciter = 
 			persistentPropertyDescr_.find(attrName);
