@@ -666,7 +666,7 @@ bool ClientSDKUnity::writeBaseEntityCallBegin(ScriptDefModule* pScriptDefModule)
 
 			EntityComponentType * pEntityComponentType = (EntityComponentType*)pPropertyDescription->getDataType();
 
-			sourcefileBody_ += fmt::format("\t\tpublic EntityBaseEntityCall_{}{} {} = null;\n",
+			sourcefileBody_ += fmt::format("\t\tprotected EntityBaseEntityCall_{}{} {} = null;\n",
 				pEntityComponentType->pScriptDefModule()->getName(), moduleSuffix, pPropertyDescription->getName());
 
 			initstr += fmt::format("\t\t\t{} = new EntityBaseEntityCall_{}{}({}, id);\n",
@@ -1759,8 +1759,8 @@ bool ClientSDKUnity::writeEntityModuleBegin(ScriptDefModule* pEntityScriptDefMod
 		sourcefileBody_ += fmt::format("\tpublic abstract class {} : EntityComponent\n\t{{\n", newModuleName);
 
 		// Ğ´entityCallÊôĞÔ
-		sourcefileBody_ += fmt::format("\t\tpublic EntityBaseEntityCall_{} baseEntityCall = null;\n", newModuleName);
-		sourcefileBody_ += fmt::format("\t\tpublic EntityCellEntityCall_{} cellEntityCall = null;\n\n", newModuleName);
+		sourcefileBody_ += fmt::format("\t\tprotected EntityBaseEntityCall_{} baseEntityCall = null;\n", newModuleName);
+		sourcefileBody_ += fmt::format("\t\tprotected EntityCellEntityCall_{} cellEntityCall = null;\n\n", newModuleName);
 	}
 	else
 	{
@@ -1768,8 +1768,8 @@ bool ClientSDKUnity::writeEntityModuleBegin(ScriptDefModule* pEntityScriptDefMod
 		sourcefileBody_ += fmt::format("\tpublic abstract class {} : Entity\n\t{{\n", newModuleName);
 
 		// Ğ´entityCallÊôĞÔ
-		sourcefileBody_ += fmt::format("\t\tpublic EntityBaseEntityCall_{} baseEntityCall = null;\n", newModuleName);
-		sourcefileBody_ += fmt::format("\t\tpublic EntityCellEntityCall_{} cellEntityCall = null;\n\n", newModuleName);
+		sourcefileBody_ += fmt::format("\t\tprotected EntityBaseEntityCall_{} baseEntityCall = null;\n", newModuleName);
+		sourcefileBody_ += fmt::format("\t\tprotected EntityCellEntityCall_{} cellEntityCall = null;\n\n", newModuleName);
 	}
 
 	return true;
@@ -2529,7 +2529,7 @@ bool ClientSDKUnity::writeEntityPropertyComponent(ScriptDefModule* pEntityScript
 {
 	EntityComponentType * pEntityComponentType = (EntityComponentType*)pPropertyDescription->getDataType();
 	
-	sourcefileBody_ += fmt::format("\t\tpublic {}{} {} = null;\n", pEntityComponentType->pScriptDefModule()->getName(), moduleSuffix, pPropertyDescription->getName(),
+	sourcefileBody_ += fmt::format("\t\tprotected {}{} {} = null;\n", pEntityComponentType->pScriptDefModule()->getName(), moduleSuffix, pPropertyDescription->getName(),
 		pEntityComponentType->pScriptDefModule()->getName());
 
 	return true;
