@@ -64,7 +64,7 @@ namespace KBEngine
         void OnOpen()
         {
             Debug.Log($"WebSocket::Connection open! {_websocket.State}");
-            Event.fireIn("_onConnectionState", new object[] { state });
+            EventMgr.Fire("_onConnectionState", state);
         }
 
         void OnError(string err)

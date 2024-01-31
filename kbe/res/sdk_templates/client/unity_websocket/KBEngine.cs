@@ -1,16 +1,11 @@
-﻿namespace KBEngine
+﻿using System;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Threading;
+using UnityEngine;
+
+namespace KBEngine
 {
-	using UnityEngine; 
-	using System; 
-	using System.Collections; 
-	using System.Collections.Generic;
-	using System.Text;
-	using System.Threading;
-	using System.Text.RegularExpressions;
-	
-	using MessageID = System.UInt16;
-	using MessageLength = System.UInt16;
-	
 	/*
 		这是KBEngine插件的核心模块
 		包括网络创建、持久化协议、entities的管理、以及引起对外可调用接口。
@@ -26,10 +21,10 @@
 	{
 		public static bool isWebSocket = false;
 		public static bool wssHasPort = false;
-		public static KBEngineApp app = null;
-		private NetworkInterfaceBase _networkInterface = null;
+		public static KBEngineApp app;
+		private NetworkInterfaceBase _networkInterface;
 		
-		KBEngineArgs _args = null;
+		KBEngineArgs _args;
 		
 		// 客户端的类别
 		// http://www.kbengine.org/docs/programming/clientsdkprogramming.html
@@ -56,7 +51,7 @@
 
 			// Mini-Client
 			CLIENT_TYPE_MINI				= 7,
-		};
+		}
 
 		//加密通信类型
 		public enum NETWORK_ENCRYPT_TYPE
@@ -66,15 +61,15 @@
 
 			//Blowfish
 			ENCRYPT_TYPE_BLOWFISH = 1,
-		};
+		}
 
 		public string username = "kbengine";
 		public string password = "123456";
 		
 		// 服务端分配的baseapp地址
 		public string baseappIP = "";
-		public UInt16 baseappTcpPort = 0;
-		public UInt16 baseappUdpPort = 0;
+		public UInt16 baseappTcpPort;
+		public UInt16 baseappUdpPort;
 
 		// 当前状态
 		public string currserver = "";
@@ -97,8 +92,8 @@
 		public string serverEntitydefMD5 = "@{KBE_SERVER_ENTITYDEF_MD5}";
 		
 		// 当前玩家的实体id与实体类别
-		public UInt64 entity_uuid = 0;
-		public Int32 entity_id = 0;
+		public UInt64 entity_uuid;
+		public Int32 entity_id;
 		public string entity_type = "";
 
 		private List<Entity> _controlledEntities = new List<Entity>();
@@ -121,21 +116,21 @@
 		// 所有服务端错误码对应的错误描述
 		private ServerErrorDescrs _serverErrs = new ServerErrorDescrs(); 
 		
-		private System.DateTime _lastTickTime = System.DateTime.Now;
-		private System.DateTime _lastTickCBTime = System.DateTime.Now;
-		private System.DateTime _lastUpdateToServerTime = System.DateTime.Now;
+		private DateTime _lastTickTime = DateTime.Now;
+		private DateTime _lastTickCBTime = DateTime.Now;
+		private DateTime _lastUpdateToServerTime = DateTime.Now;
 		
 		//上传玩家信息到服务器间隔，单位毫秒
 		private float _updatePlayerToServerPeroid = 100.0f;
 		private const int _1MS_TO_100NS = 10000;
 
 		//加密过滤器
-		private EncryptionFilter _filter = null;
+		private EncryptionFilter _filter;
 
 		// 玩家当前所在空间的id， 以及空间对应的资源
-		public UInt32 spaceID = 0;
+		public UInt32 spaceID;
 		public string spaceResPath = "";
-		public bool isLoadedGeometry = false;
+		public bool isLoadedGeometry;
 		
 		// 按照标准，每个客户端部分都应该包含这个属性
 		public const string component = "client"; 
@@ -146,25 +141,25 @@
 				throw new Exception("Only one instance of KBEngineApp!");
 			
 			app = this;
-			Event.outEventsImmediately = !args.isMultiThreads;
+			// Event.outEventsImmediately = !args.isMultiThreads;
 
 			initialize(args);
 		}
 
 		public static KBEngineApp getSingleton() 
 		{
-			if(KBEngineApp.app == null)
+			if(app == null)
 			{
 				throw new Exception("Please create KBEngineApp!");
 			}
 
-			return KBEngineApp.app;
+			return app;
 		}
 
 		public virtual bool initialize(KBEngineArgs args)
 		{
 			_args = args;
-			_updatePlayerToServerPeroid = (float)_args.syncPlayerMS;
+			_updatePlayerToServerPeroid = _args.syncPlayerMS;
 
 			EntityDef.init();
 
@@ -184,16 +179,16 @@
 		
 		void installEvents()
 		{
-			Event.registerIn(EventInTypes.createAccount, this, "createAccount");
-			Event.registerIn(EventInTypes.login, this, "login");
-			Event.registerIn(EventInTypes.logout, this, "logout");
-			Event.registerIn(EventInTypes.reloginBaseapp, this, "reloginBaseapp");
-			Event.registerIn(EventInTypes.resetPassword, this, "resetPassword");
-			Event.registerIn(EventInTypes.bindAccountEmail, this, "bindAccountEmail");
-			Event.registerIn(EventInTypes.newPassword, this, "newPassword");
+			EventMgr.Register<string, string, byte[]>(EventInTypes.createAccount, this, createAccount);
+			EventMgr.Register<string, string, byte[]>(EventInTypes.login, this, login);
+			EventMgr.Register(EventInTypes.logout, this, logout);
+			EventMgr.Register(EventInTypes.reloginBaseapp, this, reloginBaseapp);
+			EventMgr.Register<string>(EventInTypes.resetPassword, this, resetPassword);
+			EventMgr.Register<string>(EventInTypes.bindAccountEmail, this, bindAccountEmail);
+			EventMgr.Register<string, string>(EventInTypes.newPassword, this, newPassword);
 			
 			// 内部事件
-			Event.registerIn("_closeNetwork", this, "_closeNetwork");
+			EventMgr.Register<NetworkInterfaceBase>("_closeNetwork", this, _closeNetwork);
 		}
 
 		public KBEngineArgs getInitArgs()
@@ -209,10 +204,10 @@
 				logout();
 			
 			reset();
-			KBEngine.Event.deregisterIn(this);
+			EventMgr.DeregisterAll(this);
 			resetMessages();
 			
-			KBEngineApp.app = null;
+			app = null;
 		}
 		
 		public NetworkInterfaceBase networkInterface()
@@ -242,8 +237,6 @@
 		
 		public virtual void reset()
 		{
-			KBEngine.Event.clearFiredEvents();
-			
 			clearEntities(true);
 			
 			currserver = "";
@@ -259,9 +252,9 @@
 			_entityIDAliasIDList.Clear();
 			_bufferedCreateEntityMessages.Clear();
 			
-			_lastTickTime = System.DateTime.Now;
-			_lastTickCBTime = System.DateTime.Now;
-			_lastUpdateToServerTime = System.DateTime.Now;
+			_lastTickTime = DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
+			_lastUpdateToServerTime = DateTime.Now;
 			
 			spaceID = 0;
 			spaceResPath = "";
@@ -297,9 +290,6 @@
 			// 处理网络
 			if (_networkInterface != null)
 				_networkInterface.process();
-			
-			// 处理外层抛入的事件
-			Event.processInEvents();
 			
 			// 向服务端发送心跳以及同步角色信息到服务端
 			sendTick();
@@ -373,7 +363,7 @@
 					}
 				}
 				
-				_lastTickTime = System.DateTime.Now;
+				_lastTickTime = DateTime.Now;
 			}
 		}
 
@@ -382,7 +372,7 @@
 		*/
 		public void Client_onAppActiveTickCB()
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 		}
 
 		/*
@@ -442,7 +432,7 @@
 				if (serverEntitydefMD5 != currentServerEntitydefMD5)
 				{
 					Dbg.ERROR_MSG("Client_onHelloCB: digest not match! serverEntitydefMD5=" + serverEntitydefMD5 + "(server: " + currentServerEntitydefMD5 + ")");
-					Event.fireAll(EventOutTypes.onVersionNotMatch, clientVersion, serverVersion);
+					EventMgr.Fire(EventOutTypes.onVersionNotMatch, clientVersion, serverVersion);
 					return;
 				}
 			}
@@ -494,8 +484,7 @@
 			int remainingFiles = 0;
 			remainingFiles = stream.readInt32();
 
-			string fileName;
-			fileName = stream.readString();
+			var fileName = stream.readString();
 
 			int fileSize = 0;
 			fileSize = stream.readInt32();
@@ -503,7 +492,7 @@
 			byte[] fileDatas = new byte[0];
 			fileDatas = stream.readBlob();
 
-			Event.fireIn("onImportClientSDK", remainingFiles, fileName, fileSize, fileDatas);
+			EventMgr.Fire("onImportClientSDK", remainingFiles, fileName, fileSize, fileDatas);
 		}
 		
 		/*
@@ -514,7 +503,7 @@
 			serverVersion = stream.readString();
 			
 			Dbg.ERROR_MSG("Client_onVersionNotMatch: verInfo=" + clientVersion + "(server: " + serverVersion + ")");
-			Event.fireAll(EventOutTypes.onVersionNotMatch, clientVersion, serverVersion);
+			EventMgr.Fire(EventOutTypes.onVersionNotMatch, clientVersion, serverVersion);
 		}
 
 		/*
@@ -525,7 +514,7 @@
 			serverScriptVersion = stream.readString();
 			
 			Dbg.ERROR_MSG("Client_onScriptVersionNotMatch: verInfo=" + clientScriptVersion + "(server: " + serverScriptVersion + ")");
-			Event.fireAll(EventOutTypes.onScriptVersionNotMatch, clientScriptVersion, serverScriptVersion);
+			EventMgr.Fire(EventOutTypes.onScriptVersionNotMatch, clientScriptVersion, serverScriptVersion);
 		}
 		
 		/*
@@ -534,7 +523,7 @@
 		public void Client_onKicked(UInt16 failedcode)
 		{
 			Dbg.DEBUG_MSG("Client_onKicked: failedcode=" + failedcode + "(" + serverErr(failedcode) + ")");
-			Event.fireAll(EventOutTypes.onKicked, failedcode);
+			EventMgr.Fire(EventOutTypes.onKicked, failedcode);
 		}
 		
 		/*
@@ -542,11 +531,11 @@
 		*/
 		public void login(string username, string password, byte[] datas)
 		{
-			KBEngineApp.app.username = username;
-			KBEngineApp.app.password = password;
-			KBEngineApp.app._clientdatas = datas;
+			app.username = username;
+			app.password = password;
+			app._clientdatas = datas;
 			
-			KBEngineApp.app.login_loginapp(true);
+			app.login_loginapp(true);
 		}
 		
 		/*
@@ -565,7 +554,7 @@
 				Bundle bundle = Bundle.createObject();
 				bundle.newMessage(Messages.messages["Loginapp_login"]);
 				bundle.writeInt8((sbyte)_args.clientType);
-				bundle.writeBlob(KBEngineApp.app._clientdatas);
+				bundle.writeBlob(app._clientdatas);
 				bundle.writeString(username);
 				bundle.writeString(password);
 				bundle.send(_networkInterface);
@@ -574,7 +563,7 @@
 		
 		private void onConnectTo_loginapp_callback(string ip, int port, bool success, object userData)
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			
 			if(!success)
 			{
@@ -592,7 +581,7 @@
 		
 		private void onLogin_loginapp()
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			login_loginapp(false);
 		}
 		
@@ -603,7 +592,7 @@
 		{  
 			if(noconnect)
 			{
-				Event.fireOut(EventOutTypes.onLoginBaseapp);
+				EventMgr.Fire(EventOutTypes.onLoginBaseapp);
 				
 				_networkInterface.reset();
 
@@ -637,7 +626,7 @@
 
 		private void onConnectTo_baseapp_callback(string ip, int port, bool success, object userData)
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			
 			if(!success)
 			{
@@ -655,7 +644,7 @@
 		
 		private void onLogin_baseapp()
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			login_baseapp(false);
 		}
 		
@@ -665,13 +654,13 @@
 		*/
 		public void reloginBaseapp()
 		{
-			_lastTickTime = System.DateTime.Now;
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickTime = DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 
 			if(_networkInterface.valid())
 				return;
 
-			Event.fireAll(EventOutTypes.onReloginBaseapp);
+			EventMgr.Fire(EventOutTypes.onReloginBaseapp);
 
 			_networkInterface.reset();
 
@@ -712,7 +701,7 @@
 			bundle.writeInt32(entity_id);
 			bundle.send(_networkInterface);
 			
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 		}
 
 		/*
@@ -740,7 +729,7 @@
 			Dbg.DEBUG_MSG("KBEngine::onOpenLoginapp_resetpassword: successfully!");
 			currserver = "loginapp";
 			currstate = "resetpassword";
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 
 			resetpassword_loginapp(false);
 		}
@@ -750,7 +739,7 @@
 		*/
 		public void resetPassword(string username)
 		{
-			KBEngineApp.app.username = username;
+			app.username = username;
 			resetpassword_loginapp(true);
 		}
 		
@@ -775,7 +764,7 @@
 
 		private void onConnectTo_resetpassword_callback(string ip, int port, bool success, object userData)
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			
 			if(!success)
 			{
@@ -789,7 +778,7 @@
 		
 		public void Client_onReqAccountResetPasswordCB(UInt16 failcode)
 		{
-			Event.fireOut(EventOutTypes.onResetPassword, failcode);
+			EventMgr.Fire(EventOutTypes.onResetPassword, failcode);
 			
 			if(failcode != 0)
 			{
@@ -815,7 +804,7 @@
 
 		public void Client_onReqAccountBindEmailCB(UInt16 failcode)
 		{
-			Event.fireOut(EventOutTypes.onBindAccountEmail, failcode);
+			EventMgr.Fire(EventOutTypes.onBindAccountEmail, failcode);
 
 			if(failcode != 0)
 			{
@@ -841,7 +830,7 @@
 
 		public void Client_onReqAccountNewPasswordCB(UInt16 failcode)
 		{
-			Event.fireOut(EventOutTypes.onNewPassword, failcode);
+			EventMgr.Fire(EventOutTypes.onNewPassword, failcode);
 
 			if(failcode != 0)
 			{
@@ -854,11 +843,11 @@
 
 		public void createAccount(string username, string password, byte[] datas)
 		{
-			KBEngineApp.app.username = username;
-			KBEngineApp.app.password = password;
-			KBEngineApp.app._clientdatas = datas;
+			app.username = username;
+			app.password = password;
+			app._clientdatas = datas;
 			
-			KBEngineApp.app.createAccount_loginapp(true);
+			app.createAccount_loginapp(true);
 		}
 
 		/*
@@ -877,7 +866,7 @@
 				bundle.newMessage(Messages.messages["Loginapp_reqCreateAccount"]);
 				bundle.writeString(username);
 				bundle.writeString(password);
-				bundle.writeBlob(KBEngineApp.app._clientdatas);
+				bundle.writeBlob(app._clientdatas);
 				bundle.send(_networkInterface);
 			}
 		}
@@ -887,14 +876,14 @@
 			Dbg.DEBUG_MSG("KBEngine::onOpenLoginapp_createAccount: successfully!");
 			currserver = "loginapp";
 			currstate = "createAccount";
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			
 			createAccount_loginapp(false);
 		}
 		
 		private void onConnectTo_createAccount_callback(string ip, int port, bool success, object userData)
 		{
-			_lastTickCBTime = System.DateTime.Now;
+			_lastTickCBTime = DateTime.Now;
 			
 			if(!success)
 			{
@@ -921,7 +910,7 @@
 			UInt16 failedcode = stream.readUint16();
 			_serverdatas = stream.readBlob();
 			Dbg.ERROR_MSG("KBEngine::Client_onLoginFailed: failedcode(" + failedcode + ":" + serverErr(failedcode) + "), datas(" + _serverdatas.Length + ")!");
-			Event.fireAll(EventOutTypes.onLoginFailed, failedcode, _serverdatas);
+			EventMgr.Fire(EventOutTypes.onLoginFailed, failedcode, _serverdatas);
 		}
 		
 		/*
@@ -948,7 +937,7 @@
 		public void Client_onLoginBaseappFailed(UInt16 failedcode)
 		{
 			Dbg.ERROR_MSG("KBEngine::Client_onLoginBaseappFailed: failedcode=" + failedcode + "("+ serverErr(failedcode) + ")!");
-			Event.fireAll(EventOutTypes.onLoginBaseappFailed, failedcode);
+			EventMgr.Fire(EventOutTypes.onLoginBaseappFailed, failedcode);
 		}
 
 		/*
@@ -957,7 +946,7 @@
 		public void Client_onReloginBaseappFailed(UInt16 failedcode)
 		{
 			Dbg.ERROR_MSG("KBEngine::Client_onReloginBaseappFailed: failedcode=" + failedcode + "(" + serverErr(failedcode) + ")!");
-			Event.fireAll(EventOutTypes.onReloginBaseappFailed, failedcode);
+			EventMgr.Fire(EventOutTypes.onReloginBaseappFailed, failedcode);
 		}
 		
 		/*
@@ -967,7 +956,7 @@
 		{
 			entity_uuid = stream.readUint64();
 			Dbg.DEBUG_MSG("KBEngine::Client_onReloginBaseappSuccessfully: name(" + username + ")!");
-			Event.fireAll(EventOutTypes.onReloginBaseappSuccessfully);
+			EventMgr.Fire(EventOutTypes.onReloginBaseappSuccessfully);
 		}
 
 		/*
@@ -981,7 +970,7 @@
 			entity_id = eid;
 			entity_type = entityType;
 			
-			if(!this.entities.ContainsKey(eid))
+			if(!entities.ContainsKey(eid))
 			{
 				ScriptModule module = null;
 				if(!EntityDef.moduledefs.TryGetValue(entityType, out module))
@@ -1247,7 +1236,7 @@
 		public void Client_onEntityLeaveWorldOptimized(MemoryStream stream)
 		{
 			Int32 eid = getViewEntityIDFromStream(stream);
-			KBEngineApp.app.Client_onEntityLeaveWorld(eid);
+			app.Client_onEntityLeaveWorld(eid);
 		}
 
 		/*
@@ -1274,7 +1263,7 @@
 			else
 			{
 				if(_controlledEntities.Remove(entity))
-					Event.fireOut(EventOutTypes.onLoseControlledEntity, entity);
+					EventMgr.Fire(EventOutTypes.onLoseControlledEntity, entity);
 
 				entities.Remove(eid);
 				entity.destroy();
@@ -1333,7 +1322,7 @@
 			UInt16 retcode = stream.readUint16();
 			byte[] datas = stream.readBlob();
 			
-			Event.fireOut(EventOutTypes.onCreateAccountResult, retcode, datas);
+			EventMgr.Fire(EventOutTypes.onCreateAccountResult, retcode, datas);
 			
 			if(retcode != 0)
 			{
@@ -1377,7 +1366,7 @@
 			try
 			{
 				entity.onControlled(isCont);
-				Event.fireOut(EventOutTypes.onControlled, entity, isCont);
+				EventMgr.Fire(EventOutTypes.onControlled, entity, isCont);
 			}
 			catch (Exception e)
 			{
@@ -1424,25 +1413,25 @@
 				bundle.writeFloat(position.y);
 				bundle.writeFloat(position.z);
 				
-				double x = ((double)direction.x / 360 * (System.Math.PI * 2));
-				double y = ((double)direction.y / 360 * (System.Math.PI * 2));
-				double z = ((double)direction.z / 360 * (System.Math.PI * 2));
+				double x = ((double)direction.x / 360 * (Math.PI * 2));
+				double y = ((double)direction.y / 360 * (Math.PI * 2));
+				double z = ((double)direction.z / 360 * (Math.PI * 2));
 				
 				// 根据弧度转角度公式会出现负数
 				// unity会自动转化到0~360度之间，这里需要做一个还原
-				if(x - System.Math.PI > 0.0)
-					x -= System.Math.PI * 2;
+				if(x - Math.PI > 0.0)
+					x -= Math.PI * 2;
 
-				if(y - System.Math.PI > 0.0)
-					y -= System.Math.PI * 2;
+				if(y - Math.PI > 0.0)
+					y -= Math.PI * 2;
 				
-				if(z - System.Math.PI > 0.0)
-					z -= System.Math.PI * 2;
+				if(z - Math.PI > 0.0)
+					z -= Math.PI * 2;
 				
 				bundle.writeFloat((float)x);
 				bundle.writeFloat((float)y);
 				bundle.writeFloat((float)z);
-				bundle.writeUint8((Byte)(playerEntity.isOnGround == true ? 1 : 0));
+				bundle.writeUint8((Byte)(playerEntity.isOnGround ? 1 : 0));
 				bundle.writeUint32(spaceID);
 				bundle.send(_networkInterface);
 			}
@@ -1469,25 +1458,25 @@
 					bundle.writeFloat(position.y);
 					bundle.writeFloat(position.z);
 
-					double x = ((double)direction.x / 360 * (System.Math.PI * 2));
-					double y = ((double)direction.y / 360 * (System.Math.PI * 2));
-					double z = ((double)direction.z / 360 * (System.Math.PI * 2));
+					double x = ((double)direction.x / 360 * (Math.PI * 2));
+					double y = ((double)direction.y / 360 * (Math.PI * 2));
+					double z = ((double)direction.z / 360 * (Math.PI * 2));
 				
 					// 根据弧度转角度公式会出现负数
 					// unity会自动转化到0~360度之间，这里需要做一个还原
-					if(x - System.Math.PI > 0.0)
-						x -= System.Math.PI * 2;
+					if(x - Math.PI > 0.0)
+						x -= Math.PI * 2;
 
-					if(y - System.Math.PI > 0.0)
-						y -= System.Math.PI * 2;
+					if(y - Math.PI > 0.0)
+						y -= Math.PI * 2;
 					
-					if(z - System.Math.PI > 0.0)
-						z -= System.Math.PI * 2;
+					if(z - Math.PI > 0.0)
+						z -= Math.PI * 2;
 					
 					bundle.writeFloat((float)x);
 					bundle.writeFloat((float)y);
 					bundle.writeFloat((float)z);
-					bundle.writeUint8((Byte)(entity.isOnGround == true ? 1 : 0));
+					bundle.writeUint8((Byte)(entity.isOnGround ? 1 : 0));
 					bundle.writeUint32(spaceID);
 					bundle.send(_networkInterface);
 				}
@@ -1505,7 +1494,7 @@
 			isLoadedGeometry = true;
 			spaceID = uspaceID;
 			spaceResPath = respath;
-			Event.fireOut(EventOutTypes.addSpaceGeometryMapping, spaceResPath);
+			EventMgr.Fire(EventOutTypes.addSpaceGeometryMapping, spaceResPath);
 		}
 
 		public void clearSpace(bool isall)
@@ -1582,7 +1571,7 @@
 			if(key == "_mapping")
 				addSpaceGeometryMapping(spaceID, value);
 			
-			Event.fireOut(EventOutTypes.onSetSpaceData, spaceID, key, value);
+			EventMgr.Fire(EventOutTypes.onSetSpaceData, spaceID, key, value);
 		}
 
 		/*
@@ -1592,7 +1581,7 @@
 		{
 			Dbg.DEBUG_MSG("KBEngine::Client_delSpaceData: spaceID(" + spaceID + "), key(" + key + ")");
 			_spacedatas.Remove(key);
-			Event.fireOut(EventOutTypes.onDelSpaceData, spaceID, key);
+			EventMgr.Fire(EventOutTypes.onDelSpaceData, spaceID, key);
 		}
 		
 		public string getSpaceData(string key)
@@ -1631,7 +1620,7 @@
 			}
 
 			if(_controlledEntities.Remove(entity))
-				Event.fireOut(EventOutTypes.onLoseControlledEntity, entity);
+				EventMgr.Fire(EventOutTypes.onLoseControlledEntity, entity);
 
 			entities.Remove(eid);
 			entity.destroy();
@@ -1650,7 +1639,7 @@
 			if (entity != null && entity.isControlled)
 			{
 				entity.position.Set(_entityServerPos.x, _entityServerPos.y, _entityServerPos.z);
-				Event.fireOut(EventOutTypes.updatePosition, entity);
+				EventMgr.Fire(EventOutTypes.updatePosition, entity);
 				entity.onUpdateVolatileData();
 			}
 		}
@@ -1665,7 +1654,7 @@
 			{
 				entity.position.x = _entityServerPos.x;
 				entity.position.z = _entityServerPos.z;
-				Event.fireOut(EventOutTypes.updatePosition, entity);
+				EventMgr.Fire(EventOutTypes.updatePosition, entity);
 				entity.onUpdateVolatileData();
 			}
 		}
@@ -1673,15 +1662,15 @@
 		public void Client_onUpdateBaseDir(MemoryStream stream)
 		{
 			float yaw, pitch, roll;
-			yaw = stream.readFloat() * 360 / ((float)System.Math.PI * 2);
-			pitch = stream.readFloat() * 360 / ((float)System.Math.PI * 2);
-			roll = stream.readFloat() * 360 / ((float)System.Math.PI * 2);
+			yaw = stream.readFloat() * 360 / ((float)Math.PI * 2);
+			pitch = stream.readFloat() * 360 / ((float)Math.PI * 2);
+			roll = stream.readFloat() * 360 / ((float)Math.PI * 2);
 
 			var entity = player();
 			if (entity != null && entity.isControlled)
 			{
 				entity.direction.Set(roll, pitch, yaw);
-				Event.fireOut(EventOutTypes.set_direction, entity);
+				EventMgr.Fire(EventOutTypes.set_direction, entity);
 				entity.onUpdateVolatileData();
 			}
 		}
@@ -1694,7 +1683,6 @@
 			if(!entities.TryGetValue(eid, out entity))
 			{
 				Dbg.ERROR_MSG("KBEngine::Client_onUpdateData: entity(" + eid + ") not found!");
-				return;
 			}
 		}
 
@@ -2283,25 +2271,25 @@
 			if(roll != KBEMath.KBE_FLT_MAX)
 			{
 				changeDirection = true;
-				entity.direction.x = (isOptimized ? KBEMath.int82angle((SByte)roll, false) : roll) * 360 / ((float)System.Math.PI * 2);
+				entity.direction.x = (isOptimized ? KBEMath.int82angle((SByte)roll, false) : roll) * 360 / ((float)Math.PI * 2);
 			}
 
 			if(pitch != KBEMath.KBE_FLT_MAX)
 			{
 				changeDirection = true;
-				entity.direction.y = (isOptimized ? KBEMath.int82angle((SByte)pitch, false) : pitch) * 360 / ((float)System.Math.PI * 2);
+				entity.direction.y = (isOptimized ? KBEMath.int82angle((SByte)pitch, false) : pitch) * 360 / ((float)Math.PI * 2);
 			}
 			
 			if(yaw != KBEMath.KBE_FLT_MAX)
 			{
 				changeDirection = true;
-				entity.direction.z = (isOptimized ? KBEMath.int82angle((SByte)yaw, false) : yaw) * 360 / ((float)System.Math.PI * 2);
+				entity.direction.z = (isOptimized ? KBEMath.int82angle((SByte)yaw, false) : yaw) * 360 / ((float)Math.PI * 2);
 			}
 			
 			bool done = false;
-			if(changeDirection == true)
+			if(changeDirection)
 			{
-				Event.fireOut(EventOutTypes.set_direction, entity);
+				EventMgr.Fire(EventOutTypes.set_direction, entity);
 				done = true;
 			}
 			
@@ -2316,7 +2304,7 @@
 				 
 				entity.position = pos;
 				done = true;
-				Event.fireOut(EventOutTypes.updatePosition, entity);
+				EventMgr.Fire(EventOutTypes.updatePosition, entity);
 			}
 			
 			if(done)
@@ -2329,19 +2317,19 @@
 		*/
 		public void Client_onStreamDataStarted(Int16 id, UInt32 datasize, string descr)
 		{
-			Event.fireOut(EventOutTypes.onStreamDataStarted, id, datasize, descr);
+			EventMgr.Fire(EventOutTypes.onStreamDataStarted, id, datasize, descr);
 		}
 		
 		public void Client_onStreamDataRecv(MemoryStream stream)
 		{
 			Int16 resID = stream.readInt16();
 			byte[] datas = stream.readBlob();
-			Event.fireOut(EventOutTypes.onStreamDataRecv, resID, datas);
+			EventMgr.Fire(EventOutTypes.onStreamDataRecv, resID, datas);
 		}
 		
 		public void Client_onStreamDataCompleted(Int16 id)
 		{
-			Event.fireOut(EventOutTypes.onStreamDataCompleted, id);
+			EventMgr.Fire(EventOutTypes.onStreamDataCompleted, id);
 		}
 	}
 	
@@ -2355,11 +2343,11 @@
 		{
 
 			KBEngineApp app_;
-			public bool over = false;
+			public bool over;
 			
 			public KBEThread(KBEngineApp app)
 			{
-				this.app_ = app;
+				app_ = app;
 			}
 
 			public void run()
@@ -2369,7 +2357,7 @@
 
 				try
 				{
-					this.app_.process();
+					app_.process();
 				}
 				catch (Exception e)
 				{
@@ -2381,8 +2369,8 @@
 			}
 		}
 	
-		private Thread _t = null;
-		public KBEThread kbethread = null;
+		private Thread _t;
+		public KBEThread kbethread;
 
 		// 主循环频率
 		public static int threadUpdateHZ = 10;
@@ -2391,9 +2379,9 @@
 		private static float threadUpdatePeriod = 1000f / threadUpdateHZ;
 		
 		// 插件是否退出
-		private bool _isbreak = false;
+		private bool _isbreak;
 		
-		private System.DateTime _lasttime = System.DateTime.Now;
+		private DateTime _lasttime = DateTime.Now;
 
 		public KBEngineAppThread(KBEngineArgs args) : 
 			base(args)
@@ -2404,11 +2392,11 @@
 		{
 			base.initialize(args);
 			
-			KBEngineAppThread.threadUpdateHZ = args.threadUpdateHZ;
+			threadUpdateHZ = args.threadUpdateHZ;
 			threadUpdatePeriod = 1000f / threadUpdateHZ;
 			
 			kbethread = new KBEThread(this);
-			_t = new Thread(new ThreadStart(kbethread.run));
+			_t = new Thread(kbethread.run);
 			_t.Start();
 			
 			return true;
@@ -2417,7 +2405,7 @@
 		public override void reset()
 		{
 			_isbreak = false;
-			_lasttime = System.DateTime.Now;
+			_lasttime = DateTime.Now;
 			
 			base.reset();
 		}
@@ -2458,7 +2446,7 @@
 			if(diff < 0)
 				diff = 0;
 			
-			System.Threading.Thread.Sleep(diff);
+			Thread.Sleep(diff);
 			_lasttime = DateTime.Now;
 		}
 		

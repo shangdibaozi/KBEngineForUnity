@@ -1,7 +1,6 @@
-﻿using UnityEngine;
-using System;
-using System.Collections;
+﻿using System;
 using KBEngine;
+using UnityEngine;
 
 /*
 	可以理解为插件的入口模块
@@ -10,11 +9,11 @@ using KBEngine;
 	
 public class KBEMain : MonoBehaviour 
 {
-	public KBEngineApp gameapp = null;
+	public KBEngineApp gameapp;
 	
 	// 在unity3d界面中可见选项
 	public DEBUGLEVEL debugLevel = DEBUGLEVEL.DEBUG;
-	public bool isMultiThreads = false;
+	public bool isMultiThreads;
 	public string ip = "127.0.0.1";
 	public int port = @{KBE_LOGIN_PORT};
 	public KBEngineApp.CLIENT_TYPE clientType = KBEngineApp.CLIENT_TYPE.CLIENT_TYPE_MINI;
@@ -23,13 +22,13 @@ public class KBEMain : MonoBehaviour
 
 	public int threadUpdateHZ = @{KBE_UPDATEHZ} * 2;
 	public int serverHeartbeatTick = @{KBE_SERVER_EXTERNAL_TIMEOUT};
-	public int TCP_SEND_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.TCP_PACKET_MAX;
-	public int TCP_RECV_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.TCP_PACKET_MAX;
-	public int UDP_SEND_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.UDP_PACKET_MAX;
-	public int UDP_RECV_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.UDP_PACKET_MAX;
+	public int TCP_SEND_BUFFER_MAX = NetworkInterfaceBase.TCP_PACKET_MAX;
+	public int TCP_RECV_BUFFER_MAX = NetworkInterfaceBase.TCP_PACKET_MAX;
+	public int UDP_SEND_BUFFER_MAX = NetworkInterfaceBase.UDP_PACKET_MAX;
+	public int UDP_RECV_BUFFER_MAX = NetworkInterfaceBase.UDP_PACKET_MAX;
 	public bool useAliasEntityID = @{KBE_USE_ALIAS_ENTITYID};
 	public bool isOnInitCallPropertysSetMethods = true;
-	public bool forceDisableUDP = false;
+	public bool forceDisableUDP;
 
 	public bool automaticallyUpdateSDK = true;
 
@@ -41,15 +40,15 @@ public class KBEMain : MonoBehaviour
 	// Use this for initialization
 	protected virtual void Start () 
 	{
-		MonoBehaviour.print("clientapp::start()");
+		print("clientapp::start()");
 		installEvents();
 		initKBEngine();
 	}
 	
 	public virtual void installEvents()
 	{
-        KBEngine.Event.registerOut(EventOutTypes.onVersionNotMatch, this, "onVersionNotMatch");
-        KBEngine.Event.registerOut(EventOutTypes.onScriptVersionNotMatch, this, "onScriptVersionNotMatch");
+        EventMgr.Register<string, string>(EventOutTypes.onVersionNotMatch, this, onVersionNotMatch);
+        EventMgr.Register<string, string>(EventOutTypes.onScriptVersionNotMatch, this, onScriptVersionNotMatch);
 	}
 	
 	public void onVersionNotMatch(string verInfo, string serVerInfo)
@@ -74,7 +73,7 @@ public class KBEMain : MonoBehaviour
 
 		Dbg.debugLevel = debugLevel;
 
-		KBEngineArgs args = new KBEngineArgs();
+		var args = new KBEngineArgs();
 		
 		args.ip = ip;
 		args.port = port;
@@ -102,14 +101,15 @@ public class KBEMain : MonoBehaviour
 	
 	protected virtual void OnDestroy()
 	{
-		MonoBehaviour.print("clientapp::OnDestroy(): begin");
+		print("clientapp::OnDestroy(): begin");
         if (KBEngineApp.app != null)
         {
             KBEngineApp.app.destroy();
             KBEngineApp.app = null;
         }
-		KBEngine.Event.clear();
-		MonoBehaviour.print("clientapp::OnDestroy(): end");
+        
+		EventMgr.DeregisterAll(this);
+		print("clientapp::OnDestroy(): end");
 	}
 	
 	protected virtual void FixedUpdate () 
@@ -117,12 +117,10 @@ public class KBEMain : MonoBehaviour
 		KBEUpdate();
 	}
 
-	public virtual void KBEUpdate()
+	protected virtual void KBEUpdate()
 	{
 		// 单线程模式必须自己调用
 		if(!isMultiThreads)
 			gameapp.process();
-		
-		KBEngine.Event.processOutEvents();
 	}
 }

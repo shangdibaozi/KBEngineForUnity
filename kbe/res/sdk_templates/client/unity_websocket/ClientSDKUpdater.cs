@@ -3,10 +3,8 @@ namespace KBEngine
 #if UNITY_EDITOR
     using UnityEngine;
     using UnityEditor;
-    using System.Collections;
     using System;
     using System.IO;
-    using KBEngine;
 
     public class ClientSDKUpdater : MonoBehaviour
     {
@@ -20,18 +18,20 @@ namespace KBEngine
         void Start()
         {
             string kbengineCoreFile = "KBEngine.cs";
-            string[] res = System.IO.Directory.GetFiles(Application.dataPath, kbengineCoreFile, SearchOption.AllDirectories);
+            string[] res =
+                System.IO.Directory.GetFiles(Application.dataPath, kbengineCoreFile, SearchOption.AllDirectories);
             sdkPath = res[0].Replace(kbengineCoreFile, "").Replace("\\", "/");
             sdkPath = sdkPath.Remove(sdkPath.Length - 1, 1);
 
             sdkTempPath = sdkPath + "_temp";
             sdkBakPath = sdkPath + "_bak";
 
-            warnUpdateSDK = "Version does not match the server.\nClick to update KBEnginePlugin!\nPull from: " + KBEngineApp.app.getInitArgs().ip + ":" + KBEngineApp.app.getInitArgs().port;
+            warnUpdateSDK = "Version does not match the server.\nClick to update KBEnginePlugin!\nPull from: " +
+                            KBEngineApp.app.getInitArgs().ip + ":" + KBEngineApp.app.getInitArgs().port;
             installEvents();
 
-            GameObject[] objs = FindObjectsOfType(typeof(GameObject)) as GameObject[];
-            foreach (GameObject child in objs)
+            var objs = FindObjectsOfType(typeof(GameObject)) as GameObject[];
+            foreach (var child in objs)
             {
                 if (!child.gameObject.GetComponent<Camera>() &&
                     !child.gameObject.GetComponent<KBEMain>() &&
@@ -44,12 +44,12 @@ namespace KBEngine
 
         public virtual void installEvents()
         {
-            Event.registerIn("onImportClientSDK", this, "onImportClientSDK");
+            EventMgr.Register<int, string, int, byte[]>("onImportClientSDK", this, onImportClientSDK);
         }
 
         protected virtual void OnDestroy()
         {
-            KBEngine.Event.deregisterOut(this);
+            EventMgr.DeregisterAll(this);
         }
 
         public void onImportClientSDK(int remainingFiles, string fileName, int fileSize, byte[] fileDatas)
@@ -59,7 +59,8 @@ namespace KBEngine
 
             sdkFileStream.append(fileDatas, (uint)sdkFileStream.rpos, (uint)fileDatas.Length);
 
-            warnUpdateSDK = "Download:" + fileName + " -> " + sdkFileStream.length() + "/" + fileSize + "bytes! " + (int)(((float)downloadFiles / (float)(downloadFiles + remainingFiles)) * 100) + "%";
+            warnUpdateSDK = "Download:" + fileName + " -> " + sdkFileStream.length() + "/" + fileSize + "bytes! " +
+                            (int)(((float)downloadFiles / (float)(downloadFiles + remainingFiles)) * 100) + "%";
             Debug.Log(warnUpdateSDK);
 
             if (sdkFileStream.length() == fileSize)
@@ -100,7 +101,7 @@ namespace KBEngine
 
             Directory.CreateDirectory(sdkTempPath);
 
-                if (sdkFileStream != null)
+            if (sdkFileStream != null)
             {
                 sdkFileStream.reclaimObject();
                 sdkFileStream = null;
@@ -112,7 +113,7 @@ namespace KBEngine
             UInt16 callbackPort = 0;
             int clientWindowSize = (int)KBEngineApp.app.getInitArgs().TCP_RECV_BUFFER_MAX;
 
-            Bundle bundle = Bundle.createObject();
+            var bundle = Bundle.createObject();
             bundle.newMessage(Messages.messages["Loginapp_importClientSDK"]);
             bundle.writeString(tool_options);
             bundle.writeInt32(clientWindowSize);
@@ -123,8 +124,8 @@ namespace KBEngine
 
         void replaceNewSDK()
         {
-           System.IO.Directory.Move(sdkPath, sdkBakPath);
-            System.IO.Directory.Move(sdkTempPath, sdkPath);
+            Directory.Move(sdkPath, sdkBakPath);
+            Directory.Move(sdkTempPath, sdkPath);
 
             // 删除旧的SKD文件夹
             Directory.Delete(sdkBakPath, true);
@@ -140,18 +141,14 @@ namespace KBEngine
                 GUI.contentColor = Color.red;
                 GUI.backgroundColor = Color.red;
 
-                if (GUI.Button(new Rect(Screen.width * 0.25f, Screen.height * 0.4f, Screen.width * 0.5f, Screen.height * 0.2f), warnUpdateSDK))
+                if (GUI.Button(
+                        new Rect(Screen.width * 0.25f, Screen.height * 0.4f, Screen.width * 0.5f, Screen.height * 0.2f),
+                        warnUpdateSDK))
                 {
                     // 从服务器下载新的SDK
                     downloadSDKFromServer();
                 }
             }
-        }
-
-        void Update()
-        {
-
-
         }
     }
 #endif

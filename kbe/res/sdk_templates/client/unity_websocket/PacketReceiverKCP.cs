@@ -51,7 +51,7 @@
 				catch (Exception e)
 				{
 					Dbg.ERROR_MSG("PacketReceiverKCP::process: " + e.ToString());
-					Event.fireIn("_closeNetwork", new object[] { _networkInterface });
+					EventMgr.Fire("_closeNetwork", _networkInterface);
 					return;
 				}
 

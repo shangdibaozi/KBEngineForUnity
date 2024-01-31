@@ -98,13 +98,13 @@
 			{
 				_socket.Close(0);
 				_socket = null;
-				Event.fireAll(EventOutTypes.onDisconnected);
+				EventMgr.Fire(EventOutTypes.onDisconnected);
 			}
 
 			if (_websocket != null)
 			{
 				_websocket = null;
-				Event.fireAll(EventOutTypes.onDisconnected);
+				EventMgr.Fire(EventOutTypes.onDisconnected);
 			}
 			
 			connected = false;
@@ -136,8 +136,7 @@
 		
 		public void _onConnectionState(ConnectState state)
 		{
-			KBEngine.Event.deregisterIn(this);
-
+			EventMgr.DeregisterAll(this);
 			bool success = (state.error == "" && valid());
 			if (success)
 			{
@@ -158,7 +157,7 @@
 				Dbg.ERROR_MSG(string.Format("NetworkInterfaceBase::_onConnectionState(), connect error! ip: {0}:{1}, err: {2}", state.connectIP, state.connectPort, state.error));
 			}
 
-			Event.fireAll(EventOutTypes.onConnectionState, success);
+			EventMgr.Fire(EventOutTypes.onConnectionState, success);
 
 			if (state.connectCB != null)
 				state.connectCB(state.connectIP, state.connectPort, success, state.userData);
@@ -176,12 +175,12 @@
 				// Complete the connection.
 				state.socket.EndConnect(ar);
 
-				Event.fireIn("_onConnectionState", new object[] { state });
+				EventMgr.Fire("_onConnectionState", state);
 			} 
 			catch (Exception e) 
 			{
 				state.error = e.ToString();
-				Event.fireIn("_onConnectionState", new object[] { state });
+				EventMgr.Fire("_onConnectionState", state);
 			}
 		}
 
@@ -214,7 +213,7 @@
 			state.caller.EndInvoke(ar);
 			if (!KBEngineApp.isWebSocket)
 			{
-				Event.fireIn("_onConnectionState", new object[] { state });
+				EventMgr.Fire("_onConnectionState", state);
 			}
 		}
 
@@ -261,7 +260,7 @@
 			connected = false;
 			
 			// 先注册一个事件回调，该事件在当前线程触发
-			Event.registerIn("_onConnectionState", this, "_onConnectionState");
+			EventMgr.Register<ConnectState>("_onConnectionState", this, _onConnectionState);
 
 			if (KBEngineApp.isWebSocket)
 			{

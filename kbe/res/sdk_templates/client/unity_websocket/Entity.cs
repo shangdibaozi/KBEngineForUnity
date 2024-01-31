@@ -274,7 +274,7 @@
 				Dbg.ERROR_MSG(className + "::onEnterWorld: error=" + e.ToString());
 			}
 
-			Event.fireOut(EventOutTypes.onEnterWorld, this);
+			EventMgr.Fire(EventOutTypes.onEnterWorld, this);
 		}
 		
 		public virtual void onEnterWorld()
@@ -295,7 +295,7 @@
 				Dbg.ERROR_MSG(className + "::onLeaveWorld: error=" + e.ToString());
 			}
 
-			Event.fireOut(EventOutTypes.onLeaveWorld, this);
+			EventMgr.Fire(EventOutTypes.onLeaveWorld, this);
 		}
 		
 		public virtual void onLeaveWorld()
@@ -315,11 +315,11 @@
 				Dbg.ERROR_MSG(className + "::onEnterSpace: error=" + e.ToString());
 			}
 			
-			Event.fireOut(EventOutTypes.onEnterSpace, this);
+			EventMgr.Fire(EventOutTypes.onEnterSpace, this);
 			
 			// 要立即刷新表现层对象的位置
-			Event.fireOut(EventOutTypes.set_position, this);
-			Event.fireOut(EventOutTypes.set_direction, this);
+			EventMgr.Fire(EventOutTypes.set_position, this);
+			EventMgr.Fire(EventOutTypes.set_direction, this);
 		}
 		
 		public virtual void onEnterSpace()
@@ -339,7 +339,7 @@
 				Dbg.ERROR_MSG(className + "::onLeaveSpace: error=" + e.ToString());
 			}
 			
-			Event.fireOut(EventOutTypes.onLeaveSpace, this);
+			EventMgr.Fire(EventOutTypes.onLeaveSpace, this);
 		}
 
 		public virtual void onLeaveSpace()
@@ -354,7 +354,7 @@
 				KBEngineApp.app.entityServerPos(position);
 			
 			if(inWorld)
-				Event.fireOut(EventOutTypes.set_position, this);
+				EventMgr.Fire(EventOutTypes.set_position, this);
 		}
 
 		public virtual void onUpdateVolatileData()
@@ -370,7 +370,7 @@
 				direction.x = direction.x * 360 / ((float)System.Math.PI * 2);
 				direction.y = direction.y * 360 / ((float)System.Math.PI * 2);
 				direction.z = direction.z * 360 / ((float)System.Math.PI * 2);
-				Event.fireOut(EventOutTypes.set_direction, this);
+				EventMgr.Fire(EventOutTypes.set_direction, this);
 			}
 			else
 			{
