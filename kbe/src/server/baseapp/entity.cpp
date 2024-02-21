@@ -60,7 +60,8 @@ creatingCell_(false),
 createdSpace_(false),
 inRestore_(false),
 pBufferedSendToClientMessages_(NULL),
-dbInterfaceIndex_(0)
+dbInterfaceIndex_(0),
+filedDirties_()
 {
 	setDirty();
 
@@ -99,8 +100,18 @@ void Entity::onDefDataChanged(EntityComponent* pEntityComponent, const PropertyD
 	if(initing())
 		return;
 
-	if(propertyDescription->isPersistent())
+	if (propertyDescription->isPersistent())
+	{
 		setDirty();
+		if (pEntityComponent)
+		{
+			pEntityComponent->filedDirties[propertyDescription->getUType()] = propertyDescription->getName();
+		}
+		else
+		{
+			filedDirties_[propertyDescription->getUType()] = propertyDescription->getName();
+		}
+	}
 	
 	uint32 flags = propertyDescription->getFlags();
 	ENTITY_PROPERTY_UID componentPropertyUID = 0;
@@ -114,6 +125,8 @@ void Entity::onDefDataChanged(EntityComponent* pEntityComponent, const PropertyD
 		{
 			componentPropertyUID = pComponentPropertyDescription->getUType();
 			componentPropertyAliasID = pComponentPropertyDescription->aliasIDAsUint8();
+
+			filedDirties_[componentPropertyUID] = pComponentPropertyDescription->getName();
 		}
 		else
 		{
@@ -397,6 +410,10 @@ void Entity::addCellDataToStream(COMPONENT_TYPE sendTo, uint32 flags, MemoryStre
 //-------------------------------------------------------------------------------------
 void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 {
+	if (filedDirties_.size() == 0)
+	{
+		return;
+	}
 	std::vector<ENTITY_PROPERTY_UID> log;
 
 	// 再将base中存储属性取出
@@ -404,16 +421,22 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 
 	// 先将celldata中的存储属性取出
 	ScriptDefModule::PROPERTYDESCRIPTION_MAP& propertyDescrs = pScriptModule_->getPersistentPropertyDescriptions();
-	ScriptDefModule::PROPERTYDESCRIPTION_MAP::const_iterator iter = propertyDescrs.begin();
+	//ScriptDefModule::PROPERTYDESCRIPTION_MAP::const_iterator iter = propertyDescrs.begin();
 
 	if(pScriptModule_->hasCell())
 	{
 		addPositionAndDirectionToStream(*s);
 	}
 
-	for(; iter != propertyDescrs.end(); ++iter)
+	auto iter = filedDirties_.begin();
+	for(; iter != filedDirties_.end(); ++iter)
 	{
-		PropertyDescription* propertyDescription = iter->second;
+		auto rt = propertyDescrs.find(iter->second);
+		if (rt == propertyDescrs.end())
+		{
+			continue;
+		}
+		PropertyDescription* propertyDescription = rt->second;
 		std::vector<ENTITY_PROPERTY_UID>::const_iterator finditer = 
 			std::find(log.begin(), log.end(), propertyDescription->getUType());
 
@@ -504,6 +527,7 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 		SCRIPT_ERROR_CHECK();
 	}
 
+	filedDirties_.clear();
 	Py_XDECREF(pydict);
 	SCRIPT_ERROR_CHECK();
 }

@@ -311,6 +311,8 @@ protected:
 
 	// 如果这个实体已经写到数据库，那么这个属性就是对应的数据库接口的索引
 	uint16									dbInterfaceIndex_;
+	// persistent字段如果发生改变则记录下来
+	std::map<ENTITY_PROPERTY_UID, std::string>		filedDirties_;
 };
 
 }

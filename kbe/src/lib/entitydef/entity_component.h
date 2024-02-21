@@ -266,6 +266,9 @@ protected:
 
 private:
 	int32									clientappID_;
+public:
+	// persistent字段如果发生改变则记录下来
+	std::map<ENTITY_PROPERTY_UID, std::string>		filedDirties;
 };
 
 }

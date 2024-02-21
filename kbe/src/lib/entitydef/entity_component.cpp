@@ -70,7 +70,8 @@ pComponentDescrs_(pComponentDescrs),
 atIdx_(ENTITY_COMPONENTS::size_type(-1)),
 onDataChangedEvent_(),
 pPropertyDescription_(NULL),
-clientappID_(0)
+clientappID_(0),
+filedDirties()
 {
 	atIdx_ = EntityComponent::entity_components.size();
 	EntityComponent::entity_components.push_back(this);
@@ -964,51 +965,20 @@ void EntityComponent::addPersistentToStream(MemoryStream* mstream, PyObject* pyV
 	}
 
 	ScriptDefModule::PROPERTYDESCRIPTION_MAP& propertyDescrs = pComponentDescrs_->getPersistentPropertyDescriptions();
-	ScriptDefModule::PROPERTYDESCRIPTION_MAP::const_iterator iter = propertyDescrs.begin();
+	//ScriptDefModule::PROPERTYDESCRIPTION_MAP::const_iterator iter = propertyDescrs.begin();
 
-	int count = 0;
-	for (; iter != propertyDescrs.end(); ++iter)
-	{
-		PropertyDescription* propertyDescription = iter->second;
-
-		PyObject* pyVal = NULL;
-		if (propertyDescription->hasCell())
-		{
-			// 一些实体没有cell部分， 因此cell属性忽略
-			if (!cellComponentPart)
-				continue;
-
-			pyVal = PyDict_GetItemString(cellComponentPart, propertyDescription->getName());
-			Py_XINCREF(pyVal);
-		}
-		else
-		{
-			pyVal = PyObject_GetAttrString(baseComponentPart, propertyDescription->getName());
-		}
-
-		if (pyVal)
-		{
-			count++;
-			Py_DECREF(pyVal);
-		}
-		else
-		{
-			SCRIPT_ERROR_CHECK();
-
-			ERROR_MSG(fmt::format("EntityComponent::addPersistentToStream: not found property({}), use default values! name={}, utype={}, owner={}, ownerID={}, domain={}.\n",
-				propertyDescription->getName(), pComponentDescrs_ ? pComponentDescrs_->getName() : "", pComponentDescrs_ ? pComponentDescrs_->getUType() : 0,
-				owner()->ob_type->tp_name, ownerID(), COMPONENT_NAME_EX(componentType())));
-
-			count++;
-		}
-	}
-
+	int count = filedDirties.size();
 	(*mstream) << count;
 
-	iter = propertyDescrs.begin();
-	for (; iter != propertyDescrs.end(); ++iter)
+	auto iter = filedDirties.begin();
+	for (; iter != filedDirties.end(); ++iter)
 	{
-		PropertyDescription* propertyDescription = iter->second;
+		auto rt = propertyDescrs.find(iter->second);
+		if (rt == propertyDescrs.end()) 
+		{
+			continue;
+		}
+		PropertyDescription* propertyDescription = rt->second;
 
 		PyObject* pyVal = NULL;
 		if (propertyDescription->hasCell())
@@ -1042,6 +1012,8 @@ void EntityComponent::addPersistentToStream(MemoryStream* mstream, PyObject* pyV
 			propertyDescription->addPersistentToStream(mstream, NULL);
 		}
 	}
+
+	filedDirties.clear();
 
 	if(baseComponentPart)
 		Py_DECREF(baseComponentPart);

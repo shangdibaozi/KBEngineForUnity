@@ -18,3 +18,10 @@ class LbComponent(KBEngine.EntityComponent):
         """
         """
         DEBUG_MSG("LbComponent::onDetached(): owner=%i" % (owner.id))
+
+    def addItem(self, p1, p2):
+        self.dlst.append({
+                'param1': p1,
+                'param2': p2
+            })
+        self.dlst = self.dlst
