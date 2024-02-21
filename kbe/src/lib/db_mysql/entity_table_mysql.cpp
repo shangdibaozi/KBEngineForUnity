@@ -903,6 +903,41 @@ void EntityTableMysql::getWriteSqlItem(DBInterface* pdbi, MemoryStream* s, mysql
 }
 
 //-------------------------------------------------------------------------------------
+void EntityTableMysql::getWriteSqlItemComponent(DBInterface* pdbi, MemoryStream* s, mysql::DBContext& context)
+{
+	if (tableFixedOrderItems_.size() == 0)
+		return;
+
+	std::vector<EntityTableItem*>::iterator iter = tableFixedOrderItems_.begin();
+
+	mysql::DBContext* context1 = new mysql::DBContext();
+	context1->parentTableName = (*iter)->pParentTable()->tableName();
+	context1->tableName = (*iter)->tableName();
+	context1->parentTableDBID = 0;
+	context1->dbid = 0;
+	context1->isEmpty = (s == NULL);
+
+	KBEShared_ptr< mysql::DBContext > opTableValBox1Ptr(context1);
+	context.optable.push_back(std::pair<std::string/*tableName*/, KBEShared_ptr< mysql::DBContext > >
+		((*iter)->tableName(), opTableValBox1Ptr));
+
+	int count = 0;
+	(*s) >> count;
+	ENTITY_PROPERTY_UID child_pid;
+	for (int i = 0; i < count; i++)
+	{
+		(*s) >> child_pid;
+		auto pTableItem = this->findItem(child_pid);
+		if (pTableItem == nullptr)
+		{
+			ERROR_MSG(fmt::format("EntityTableMysql::getWriteSqlItemComponent: not found item [{}].\n", child_pid));
+			return;
+		}
+		static_cast<EntityTableItemMysqlBase*>((pTableItem))->getWriteSqlItem(pdbi, s, *context1);
+	}
+}
+
+//-------------------------------------------------------------------------------------
 void EntityTableMysql::getReadSqlItem(mysql::DBContext& context)
 {
 	if(tableFixedOrderItems_.size() == 0)
@@ -1596,7 +1631,7 @@ void EntityTableItemMysql_Component::getWriteSqlItem(DBInterface* pdbi, MemorySt
 {
 	if (pChildTable_)
 	{
-		static_cast<EntityTableMysql*>(pChildTable_)->getWriteSqlItem(pdbi, s, context);
+		static_cast<EntityTableMysql*>(pChildTable_)->getWriteSqlItemComponent(pdbi, s, context);
 	}
 }
 

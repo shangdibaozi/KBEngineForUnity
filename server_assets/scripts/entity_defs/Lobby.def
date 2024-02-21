@@ -1,0 +1,45 @@
+<root>
+
+	<Components>
+		<lcb1> 
+			<Type> LbComponent </Type>
+			<Persistent> true </Persistent>
+		</lcb1>
+	</Components>
+
+	<Properties>
+		<dbVersion>
+			<Type> UINT16 </Type>
+            <Flags> BASE </Flags>
+            <Persistent> true </Persistent>
+            <Default> 0 </Default>
+		</dbVersion>
+
+
+		<abc>
+			<Type> UINT16 </Type>
+            <Flags> BASE </Flags>
+            <Persistent> true </Persistent>
+            <Default> 0 </Default>
+		</abc>
+
+		<avatarData>
+			<Type> AVATAR_DATA </Type>
+			<Flags> BASE </Flags>
+			<Persistent> true </Persistent>
+		</avatarData>
+
+		<avatarDataLst>
+			<Type> AVATAR_DATA_LIST </Type>
+			<Flags> BASE </Flags>
+			<Persistent> true </Persistent>
+		</avatarDataLst>
+
+
+		<items>
+			<Type> ITEM_ARRAY </Type>
+			<Flags> BASE </Flags>
+			<Persistent> false </Persistent>
+		</items>
+	</Properties>
+</root>

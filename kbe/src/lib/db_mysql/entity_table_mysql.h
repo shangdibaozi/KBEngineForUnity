@@ -585,6 +585,7 @@ public:
 		获取需要存储的表名， 字段名和转换为sql存储时的字符串值
 	*/
 	virtual void getWriteSqlItem(DBInterface* pdbi, MemoryStream* s, mysql::DBContext& context);
+	virtual void getWriteSqlItemComponent(DBInterface* pdbi, MemoryStream* s, mysql::DBContext& context);
 	virtual void getReadSqlItem(mysql::DBContext& context);
 
 	void init_db_item_name();
