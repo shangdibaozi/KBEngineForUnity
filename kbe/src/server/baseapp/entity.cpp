@@ -93,6 +93,17 @@ void Entity::onInitializeScript()
 
 }
 
+void Entity::setDirty(uint32* digest)
+{
+	ScriptDefModule::PROPERTYDESCRIPTION_MAP& propertyDescrs = pScriptModule_->getPersistentPropertyDescriptions();
+	auto iter = propertyDescrs.begin();
+	for(; iter != propertyDescrs.end(); ++iter)
+	{
+		auto property = iter->second;
+		filedDirties_[property->getUType()] = property->getName();
+	}
+}
+
 //-------------------------------------------------------------------------------------
 void Entity::onDefDataChanged(EntityComponent* pEntityComponent, const PropertyDescription* propertyDescription,
 		PyObject* pyData)
@@ -102,7 +113,7 @@ void Entity::onDefDataChanged(EntityComponent* pEntityComponent, const PropertyD
 
 	if (propertyDescription->isPersistent())
 	{
-		setDirty();
+		// setDirty();
 		if (pEntityComponent)
 		{
 			pEntityComponent->filedDirties[propertyDescription->getUType()] = propertyDescription->getName();
@@ -408,7 +419,7 @@ void Entity::addCellDataToStream(COMPONENT_TYPE sendTo, uint32 flags, MemoryStre
 }
 
 //-------------------------------------------------------------------------------------
-void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
+void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* stream)
 {
 	if (filedDirties_.size() == 0)
 	{
@@ -421,14 +432,15 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 
 	// 先将celldata中的存储属性取出
 	ScriptDefModule::PROPERTYDESCRIPTION_MAP& propertyDescrs = pScriptModule_->getPersistentPropertyDescriptions();
-	//ScriptDefModule::PROPERTYDESCRIPTION_MAP::const_iterator iter = propertyDescrs.begin();
+	// ScriptDefModule::PROPERTYDESCRIPTION_MAP::const_iterator iter = propertyDescrs.begin();
 
 	if(pScriptModule_->hasCell())
 	{
-		addPositionAndDirectionToStream(*s);
+		addPositionAndDirectionToStream(*stream);
 	}
 
 	auto iter = filedDirties_.begin();
+	// for(; iter != propertyDescrs.end(); ++iter)
 	for(; iter != filedDirties_.end(); ++iter)
 	{
 		auto rt = propertyDescrs.find(iter->second);
@@ -437,6 +449,7 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 			continue;
 		}
 		PropertyDescription* propertyDescription = rt->second;
+		// PropertyDescription* propertyDescription = iter->second;
 		std::vector<ENTITY_PROPERTY_UID>::const_iterator finditer = 
 			std::find(log.begin(), log.end(), propertyDescription->getUType());
 
@@ -461,9 +474,9 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 				}
 				else
 				{
-					(*s) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
+					(*stream) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
 					log.push_back(propertyDescription->getUType());
-					propertyDescription->addPersistentToStream(s, pyVal);
+					propertyDescription->addPersistentToStream(stream, pyVal);
 					DEBUG_PERSISTENT_PROPERTY("addCellPersistentsDataToStream", attrname);
 				}
 			}
@@ -477,9 +490,9 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 				}
 				else
 				{
-	    			(*s) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
+	    			(*stream) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
 					log.push_back(propertyDescription->getUType());
-	    			propertyDescription->addPersistentToStream(s, pyVal);
+	    			propertyDescription->addPersistentToStream(stream, pyVal);
 					DEBUG_PERSISTENT_PROPERTY("addBasePersistentsDataToStream", attrname);
 				}
 			}
@@ -490,9 +503,9 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 					WARNING_MSG(fmt::format("{}::addPersistentsDataToStream: {} not found Persistent({}), use default values!\n",
 						this->scriptName(), this->id(), attrname));
 
-					(*s) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
+					(*stream) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
 					log.push_back(propertyDescription->getUType());
-					propertyDescription->addPersistentToStream(s, NULL);
+					propertyDescription->addPersistentToStream(stream, NULL);
 				}
 				else
 				{
@@ -512,9 +525,9 @@ void Entity::addPersistentsDataToStream(uint32 flags, MemoryStream* s)
 						}
 						else
 						{
-							(*s) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
+							(*stream) << (ENTITY_PROPERTY_UID)0 << propertyDescription->getUType();
 							log.push_back(propertyDescription->getUType());
-							propertyDescription->addPersistentToStream(s, pyVal);
+							propertyDescription->addPersistentToStream(stream, pyVal);
 							DEBUG_PERSISTENT_PROPERTY("addCellPersistentsDataToStream", attrname);
 						}
 					}
@@ -1324,15 +1337,19 @@ void Entity::onCellWriteToDBCompleted(CALLBACK_ID callbackID, int8 shouldAutoLoa
 	
 	// 如果在数据库中已经存在该entity则允许应用层多次调用写库进行数据及时覆盖需求
 	if(this->DBID_ > 0)
+	{
 		isArchiveing_ = false;
-	
+	}
+
 	Components::COMPONENTS& cts = Components::getSingleton().getComponents(DBMGR_TYPE);
-	Components::ComponentInfos* dbmgrinfos = NULL;
+	Components::ComponentInfos* dbmgrinfos = nullptr;
 
 	if(cts.size() > 0)
+	{
 		dbmgrinfos = &(*cts.begin());
+	}
 
-	if(dbmgrinfos == NULL || dbmgrinfos->pChannel == NULL || dbmgrinfos->cid == 0)
+	if(dbmgrinfos == nullptr || dbmgrinfos->pChannel == nullptr || dbmgrinfos->cid == 0)
 	{
 		ERROR_MSG(fmt::format("{}::onCellWriteToDBCompleted({}): not found dbmgr!\n", 
 			this->scriptName(), this->id()));
@@ -1361,22 +1378,22 @@ void Entity::onCellWriteToDBCompleted(CALLBACK_ID callbackID, int8 shouldAutoLoa
 		return;
 	}
 
-	KBE_SHA1 sha;
-	uint32 digest[5];
-
-	sha.Input(s->data(), s->length());
-	sha.Result(digest);
-
-	// 检查数据是否有变化，有变化则将数据备份并且记录数据hash，没变化什么也不做
-	if (memcmp((void*)&persistentDigest_[0], (void*)&digest[0], sizeof(persistentDigest_)) == 0)
-	{
-		MemoryStream::reclaimPoolObject(s);
-		return;
-	}
-	else
-	{
-		setDirty((uint32*)&digest[0]);
-	}
+	// KBE_SHA1 sha;
+	// uint32 digest[5];
+	//
+	// sha.Input(s->data(), s->length());
+	// sha.Result(digest);
+	//
+	// // 检查数据是否有变化，有变化则将数据备份并且记录数据hash，没变化什么也不做
+	// if (memcmp((void*)&persistentDigest_[0], (void*)&digest[0], sizeof(persistentDigest_)) == 0)
+	// {
+	// 	MemoryStream::reclaimPoolObject(s);
+	// 	return;
+	// }
+	// else
+	// {
+	// 	setDirty((uint32*)&digest[0]);
+	// }
 
 	Network::Bundle* pBundle = Network::Bundle::createPoolObject(OBJECTPOOL_POINT);
 	(*pBundle).newMessage(DbmgrInterface::writeEntity);
