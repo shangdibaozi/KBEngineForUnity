@@ -7,6 +7,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+using AOT;
+using System.Runtime.InteropServices;
+#endif
+
 using UnityEngine;
 using System.Collections;
 
@@ -643,6 +648,7 @@ namespace NativeWebSocket
         {
             WebSocketCloseCode closeCode = WebSocketCloseCode.Abnormal;
             await new WaitForBackgroundThread();
+            Debug.Log($"WebSocket Receive");
             ArraySegment<byte> arraySegment = new ArraySegment<byte>(buffer);
             try
             {
