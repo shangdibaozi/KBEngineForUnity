@@ -1,6 +1,6 @@
 using System.Net.Sockets;
 using UnityEngine;
-using NativeWebSocket;
+using UnityWebSocket;
 
 namespace KBEngine
 {
@@ -12,7 +12,7 @@ namespace KBEngine
 
         public override bool valid()
         {
-            return _websocket != null && (_websocket.State == WebSocketState.Open);
+            return _websocket != null && (_websocket.ReadyState == WebSocketState.Open);
         }
 
         protected override PacketReceiverBase createPacketReceiver()
@@ -52,42 +52,30 @@ namespace KBEngine
 
         protected override async void onAsyncConnect(ConnectState state)
         {
-            Debug.Log($"WebSocket::onAsyncConnect {state.websocket.State} {url}");
-            await state.websocket.Connect();
+            Debug.Log($"WebSocket::onAsyncConnect {state.websocket.ReadyState} {url}");
+            state.websocket.ConnectAsync();
         }
 
-        public async void Connect()
+        public void Connect()
         {
-            await state.websocket.Connect();
+            state.websocket.ConnectAsync();
         }
 
-        void OnOpen()
+        void OnOpen(object sender, OpenEventArgs e)
         {
-            Debug.Log($"WebSocket::Connection open! {_websocket.State}");
+            Debug.Log($"WebSocket::Connection open! {_websocket.ReadyState}");
             EventMgr.Fire("_onConnectionState", state);
         }
 
-        void OnError(string err)
+        void OnError(object sender, ErrorEventArgs e)
         {
-            Debug.Log($"WebSocket::Error! {err}");
+            Debug.Log($"WebSocket::Error! {e}");
         }
 
-        void OnClose(WebSocketCloseCode code)
+        void OnClose(object sender, CloseEventArgs e)
         {
             Debug.Log($"WebSocket::Connection closed! {url}");
             close();
-        }
-
-        public override void process()
-        {
-            base.process();
-#if !UNITY_WEBGL || UNITY_EDITOR
-            if(_websocket != null)
-            {
-                // 不加这个OnMessage无法收到消息
-                _websocket.DispatchMessageQueue();
-            }
-#endif
         }
     }
 }

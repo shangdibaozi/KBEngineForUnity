@@ -1,4 +1,6 @@
-﻿namespace KBEngine
+﻿using UnityWebSocket;
+
+namespace KBEngine
 {
 	using UnityEngine;
 	using System;
@@ -8,7 +10,6 @@
 
 	using MessageID = System.UInt16;
 	using MessageLength = System.UInt16;
-	using NativeWebSocket;
 
 	/// <summary>
 	/// 网络模块
@@ -86,7 +87,7 @@
 
 			if (_websocket != null)
 			{
-				_websocket.Close();
+				_websocket.CloseAsync();
 				_websocket = null;
 			}
 		}

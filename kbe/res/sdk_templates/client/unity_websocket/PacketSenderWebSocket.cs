@@ -1,4 +1,5 @@
-using NativeWebSocket;
+
+using UnityWebSocket;
 
 namespace KBEngine
 {
@@ -16,7 +17,7 @@ namespace KBEngine
             if (dataLength <= 0)
                 return true;
 
-            _websocket.Send(stream.getbuffer());
+            _websocket.SendAsync(stream.getbuffer());
 
             return true;
         }

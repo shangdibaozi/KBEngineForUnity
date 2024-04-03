@@ -1,4 +1,6 @@
 
+using UnityWebSocket;
+
 namespace KBEngine
 {
     public class PacketReceiverWebSocket : PacketReceiverBase
@@ -22,9 +24,9 @@ namespace KBEngine
             throw new System.NotImplementedException();
         }
 
-        public void OnMessage(byte[] buffer)
+        public void OnMessage(object sender, MessageEventArgs e)
         {
-            _messageReader.process(buffer, 0, (uint)buffer.Length);
+            _messageReader.process(e.RawData, 0, (uint)e.RawData.Length);
         }
     }
 }
