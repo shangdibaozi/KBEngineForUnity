@@ -70,6 +70,7 @@ namespace KBEngine
         void OnError(object sender, ErrorEventArgs e)
         {
             Debug.Log($"WebSocket::Error! {e}");
+            close();
         }
 
         void OnClose(object sender, CloseEventArgs e)
