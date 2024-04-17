@@ -252,7 +252,7 @@ public:
 	/** 
 		设置实体持久化数据是否已脏，脏了会自动存档 
 	*/
-	INLINE void setDirty(uint32* digest = NULL);
+	void setDirty(uint32* digest = NULL);
 	INLINE bool isDirty() const;
 	
 protected:
