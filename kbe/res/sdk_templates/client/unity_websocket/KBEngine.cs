@@ -20,7 +20,6 @@ namespace KBEngine
 	public class KBEngineApp
 	{
 		public static bool isWebSocket = false;
-		public static bool wssHasPort = false;
 		public static KBEngineApp app;
 		private NetworkInterfaceBase _networkInterface;
 		

@@ -244,10 +244,6 @@ namespace KBEngine
 
             if (KBEngineApp.isWebSocket)
 			{
-				if (!KBEngineApp.wssHasPort)
-				{
-					state.connectPort = 0;
-				}
 				_websocket = createWebSocket(state);
 				state.websocket = _websocket;
 			}
