@@ -366,12 +366,28 @@ namespace KBEngine
 			}
 		}
 
+		private Action tickCallback;
+		public void SentTickNow(Action tickCb)
+		{
+			tickCallback = tickCb;
+			_lastTickCBTime = DateTime.Now;
+			var oldVal = _args.serverHeartbeatTick;
+			_args.serverHeartbeatTick = 0;
+			sendTick();
+			_args.serverHeartbeatTick = oldVal;
+		}
+
 		/*
 			服务器心跳回调
 		*/
 		public void Client_onAppActiveTickCB()
 		{
 			_lastTickCBTime = DateTime.Now;
+			if (tickCallback != null)
+			{
+				tickCallback.Invoke();
+				tickCallback = null;
+			}
 		}
 
 		/*
