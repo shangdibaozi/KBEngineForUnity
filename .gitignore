@@ -8167,3 +8167,4 @@ kbengine_demos_assets-def/.vscode/ipch/803b7eea0fbefcc9/mmap_address.bin
 *.lib
 /docs/~$KBEngine overview(cn).pptx
 /kbe/src/.idea/.idea.kbengine/.idea
+/kbe/src/lib/python/PCbuild/obj/37amd64_Debug/pyexpat/pyexpat_d.Build.CppClean.log

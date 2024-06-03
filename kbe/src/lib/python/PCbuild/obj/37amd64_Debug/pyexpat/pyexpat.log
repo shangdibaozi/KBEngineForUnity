@@ -1,2 +1,8 @@
-﻿    正在创建库 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\pyexpat_d.lib 和对象 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\pyexpat_d.exp
+﻿  pyexpat.c
+  xmlparse.c
+  xmlrole.c
+  xmltok.c
+F:\github\KBEngineForUnity\kbe\src\lib\python\Modules\expat\xmltok.c(1,1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+  正在生成代码...
+    正在创建库 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\pyexpat_d.lib 和对象 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\pyexpat_d.exp
   pyexpat.vcxproj -> F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\pyexpat_d.pyd
