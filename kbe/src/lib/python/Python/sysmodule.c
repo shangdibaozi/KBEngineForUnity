@@ -274,7 +274,9 @@ sys_displayhook(PyObject *self, PyObject *o)
 
     builtins = _PyImport_GetModuleId(&PyId_builtins);
     if (builtins == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "lost builtins module");
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "lost builtins module");
+        }
         return NULL;
     }
     Py_DECREF(builtins);
@@ -834,7 +836,7 @@ static PyTypeObject AsyncGenHooksType;
 PyDoc_STRVAR(asyncgen_hooks_doc,
 "asyncgen_hooks\n\
 \n\
-A struct sequence providing information about asynhronous\n\
+A named tuple providing information about asynchronous\n\
 generators hooks.  The attributes are read only.");
 
 static PyStructSequence_Field asyncgen_hooks_fields[] = {
@@ -941,7 +943,7 @@ static PyTypeObject Hash_InfoType;
 PyDoc_STRVAR(hash_info_doc,
 "hash_info\n\
 \n\
-A struct sequence providing parameters used for computing\n\
+A named tuple providing parameters used for computing\n\
 hashes. The attributes are read only.");
 
 static PyStructSequence_Field hash_info_fields[] = {
@@ -1965,17 +1967,17 @@ builtin_module_names -- tuple of module names built into this interpreter\n\
 copyright -- copyright notice pertaining to this interpreter\n\
 exec_prefix -- prefix used to find the machine-specific Python library\n\
 executable -- absolute path of the executable binary of the Python interpreter\n\
-float_info -- a struct sequence with information about the float implementation.\n\
+float_info -- a named tuple with information about the float implementation.\n\
 float_repr_style -- string indicating the style of repr() output for floats\n\
-hash_info -- a struct sequence with information about the hash algorithm.\n\
+hash_info -- a named tuple with information about the hash algorithm.\n\
 hexversion -- version information encoded as a single integer\n\
 implementation -- Python implementation information.\n\
-int_info -- a struct sequence with information about the int implementation.\n\
+int_info -- a named tuple with information about the int implementation.\n\
 maxsize -- the largest supported length of containers.\n\
 maxunicode -- the value of the largest Unicode code point\n\
 platform -- platform identifier\n\
 prefix -- prefix used to find the Python library\n\
-thread_info -- a struct sequence with information about the thread implementation.\n\
+thread_info -- a named tuple with information about the thread implementation.\n\
 version -- the version of this interpreter as a string\n\
 version_info -- version information as a named tuple\n\
 "
@@ -2446,8 +2448,6 @@ err_occurred:
     return _Py_INIT_ERR("can't initialize sys module");
 }
 
-#undef SET_SYS_FROM_STRING
-
 /* Updating the sys namespace, returning integer error codes */
 #define SET_SYS_FROM_STRING_INT_RESULT(key, value)         \
     do {                                                   \
@@ -2480,6 +2480,17 @@ _PySys_EndInit(PyObject *sysdict, _PyMainInterpreterConfig *config)
     SET_SYS_FROM_STRING_BORROW("base_prefix", config->base_prefix);
     SET_SYS_FROM_STRING_BORROW("exec_prefix", config->exec_prefix);
     SET_SYS_FROM_STRING_BORROW("base_exec_prefix", config->base_exec_prefix);
+
+#ifdef MS_WINDOWS
+    const wchar_t *baseExecutable = _wgetenv(L"__PYVENV_BASE_EXECUTABLE__");
+    if (baseExecutable) {
+        SET_SYS_FROM_STRING("_base_executable",
+                            PyUnicode_FromWideChar(baseExecutable, -1));
+        _wputenv_s(L"__PYVENV_BASE_EXECUTABLE__", L"");
+    } else {
+        SET_SYS_FROM_STRING_BORROW("_base_executable", config->executable);
+    }
+#endif
 
     if (config->argv != NULL) {
         SET_SYS_FROM_STRING_BORROW("argv", config->argv);
@@ -2526,6 +2537,7 @@ err_occurred:
     return -1;
 }
 
+#undef SET_SYS_FROM_STRING
 #undef SET_SYS_FROM_STRING_BORROW
 #undef SET_SYS_FROM_STRING_INT_RESULT
 
@@ -2615,7 +2627,10 @@ PySys_SetArgvEx(int argc, wchar_t **argv, int updatepath)
     if (updatepath) {
         /* If argv[0] is not '-c' nor '-m', prepend argv[0] to sys.path.
            If argv[0] is a symlink, use the real path. */
-        PyObject *argv0 = _PyPathConfig_ComputeArgv0(argc, argv);
+        PyObject *argv0 = NULL;
+        if (!_PyPathConfig_ComputeArgv0(argc, argv, &argv0)) {
+            return;
+        }
         if (argv0 == NULL) {
             Py_FatalError("can't compute path0 from argv");
         }

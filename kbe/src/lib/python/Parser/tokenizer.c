@@ -733,9 +733,14 @@ translate_newlines(const char *s, int exec_input, struct tok_state *tok) {
     }
     *current = '\0';
     final_length = current - buf + 1;
-    if (final_length < needed_length && final_length)
+    if (final_length < needed_length && final_length) {
         /* should never fail */
-        buf = PyMem_REALLOC(buf, final_length);
+        char* result = PyMem_REALLOC(buf, final_length);
+        if (result == NULL) {
+            PyMem_FREE(buf);
+        }
+        buf = result;
+    }
     return buf;
 }
 
@@ -1390,6 +1395,12 @@ tok_get(struct tok_state *tok, char **p_start, char **p_end)
             if (col == 0 && c == '\n' && tok->prompt != NULL) {
                 blankline = 0; /* Let it through */
             }
+            else if (tok->prompt != NULL && tok->lineno == 1) {
+                /* In interactive mode, if the first line contains
+                   only spaces and/or a comment, let it through. */
+                blankline = 0;
+                col = altcol = 0;
+            }
             else {
                 blankline = 1; /* Ignore completely */
             }
@@ -1885,7 +1896,7 @@ PyTokenizer_FindEncodingFilename(int fd, PyObject *filename)
     if (tok->encoding) {
         encoding = (char *)PyMem_MALLOC(strlen(tok->encoding) + 1);
         if (encoding)
-        strcpy(encoding, tok->encoding);
+            strcpy(encoding, tok->encoding);
     }
     PyTokenizer_Free(tok);
     return encoding;

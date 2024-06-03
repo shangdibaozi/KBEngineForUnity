@@ -478,6 +478,24 @@ class TestRetrievingSourceCode(GetSourceBase):
     def test_getfile(self):
         self.assertEqual(inspect.getfile(mod.StupidGit), mod.__file__)
 
+    def test_getfile_builtin_module(self):
+        with self.assertRaises(TypeError) as e:
+            inspect.getfile(sys)
+        self.assertTrue(str(e.exception).startswith('<module'))
+
+    def test_getfile_builtin_class(self):
+        with self.assertRaises(TypeError) as e:
+            inspect.getfile(int)
+        self.assertTrue(str(e.exception).startswith('<class'))
+
+    def test_getfile_builtin_function_or_method(self):
+        with self.assertRaises(TypeError) as e_abs:
+            inspect.getfile(abs)
+        self.assertIn('expected, got', str(e_abs.exception))
+        with self.assertRaises(TypeError) as e_append:
+            inspect.getfile(list.append)
+        self.assertIn('expected, got', str(e_append.exception))
+
     def test_getfile_class_without_module(self):
         class CM(type):
             @property
@@ -3032,14 +3050,21 @@ class TestSignatureObject(unittest.TestCase):
         class MySignature(inspect.Signature): pass
         def foo(a, *, b:1): pass
         foo_sig = MySignature.from_callable(foo)
-        self.assertTrue(isinstance(foo_sig, MySignature))
+        self.assertIsInstance(foo_sig, MySignature)
+
+    def test_signature_from_callable_class(self):
+        # A regression test for a class inheriting its signature from `object`.
+        class MySignature(inspect.Signature): pass
+        class foo: pass
+        foo_sig = MySignature.from_callable(foo)
+        self.assertIsInstance(foo_sig, MySignature)
 
     @unittest.skipIf(MISSING_C_DOCSTRINGS,
                      "Signature information for builtins requires docstrings")
     def test_signature_from_callable_builtin_obj(self):
         class MySignature(inspect.Signature): pass
         sig = MySignature.from_callable(_pickle.Pickler)
-        self.assertTrue(isinstance(sig, MySignature))
+        self.assertIsInstance(sig, MySignature)
 
     def test_signature_definition_order_preserved_on_kwonly(self):
         for fn in signatures_with_lexicographic_keyword_only_parameters():

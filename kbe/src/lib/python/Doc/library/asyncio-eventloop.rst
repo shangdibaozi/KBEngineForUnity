@@ -34,8 +34,10 @@ an event loop:
 
 .. function:: get_event_loop()
 
-   Get the current event loop.  If there is no current event loop set
-   in the current OS thread and :func:`set_event_loop` has not yet
+   Get the current event loop.
+
+   If there is no current event loop set in the current OS thread,
+   the OS thread is main, and :func:`set_event_loop` has not yet
    been called, asyncio will create a new event loop and set it as the
    current one.
 
@@ -281,9 +283,9 @@ clocks to track time.
    the event loop's internal monotonic clock.
 
 .. note::
-
-   Timeouts (relative *delay* or absolute *when*) should not
-   exceed one day.
+   .. versionchanged:: 3.8
+      In Python 3.7 and earlier timeouts (relative *delay* or absolute *when*)
+      should not exceed one day.  This has been fixed in Python 3.8.
 
 .. seealso::
 
@@ -429,6 +431,21 @@ Opening network connections
                         reuse_address=None, reuse_port=None, \
                         allow_broadcast=None, sock=None)
 
+   .. note::
+      The parameter *reuse_address* is no longer supported, as using
+      :py:data:`~sockets.SO_REUSEADDR` poses a significant security concern for
+      UDP. Explicitly passing ``reuse_address=True`` will raise an exception.
+
+      When multiple processes with differing UIDs assign sockets to an
+      indentical UDP socket address with ``SO_REUSEADDR``, incoming packets can
+      become randomly distributed among the sockets.
+
+      For supported platforms, *reuse_port* can be used as a replacement for
+      similar functionality. With *reuse_port*,
+      :py:data:`~sockets.SO_REUSEPORT` is used instead, which specifically
+      prevents processes with differing UIDs from assigning sockets to the same
+      socket address.
+
    Create a datagram connection.
 
    The socket family can be either :py:data:`~socket.AF_INET`,
@@ -457,11 +474,6 @@ Opening network connections
      resolution. If given, these should all be integers from the
      corresponding :mod:`socket` module constants.
 
-   * *reuse_address* tells the kernel to reuse a local socket in
-     ``TIME_WAIT`` state, without waiting for its natural timeout to
-     expire. If not specified will automatically be set to ``True`` on
-     Unix.
-
    * *reuse_port* tells the kernel to allow this endpoint to be bound to the
      same port as other existing endpoints are bound to, so long as they all
      set this flag when being created. This option is not supported on Windows
@@ -484,6 +496,10 @@ Opening network connections
    .. versionchanged:: 3.4.4
       The *family*, *proto*, *flags*, *reuse_address*, *reuse_port,
       *allow_broadcast*, and *sock* parameters were added.
+
+   .. versionchanged:: 3.7.6
+      The *reuse_address* parameter is no longer supported due to security
+      concerns.
 
 .. coroutinemethod:: loop.create_unix_connection(protocol_factory, \
                         path=None, \*, ssl=None, sock=None, \
@@ -1605,7 +1621,7 @@ using the :meth:`loop.add_signal_handler` method::
     import os
     import signal
 
-    def ask_exit(signame):
+    def ask_exit(signame, loop):
         print("got signal %s: exit" % signame)
         loop.stop()
 
@@ -1615,7 +1631,7 @@ using the :meth:`loop.add_signal_handler` method::
         for signame in {'SIGINT', 'SIGTERM'}:
             loop.add_signal_handler(
                 getattr(signal, signame),
-                functools.partial(ask_exit, signame))
+                functools.partial(ask_exit, signame, loop))
 
         await asyncio.sleep(3600)
 

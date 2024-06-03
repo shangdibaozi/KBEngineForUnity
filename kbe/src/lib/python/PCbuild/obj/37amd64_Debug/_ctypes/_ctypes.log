@@ -1,0 +1,14 @@
+﻿  Performing Custom Build Tools
+   Assembling: F:\github\KBEngineForUnity\kbe\src\lib\python\Modules\_ctypes\libffi_msvc\win64.asm
+  _ctypes.c
+  callbacks.c
+  callproc.c
+  cfield.c
+  ffi.c
+  malloc_closure.c
+  stgdict.c
+  正在生成代码...
+F:\github\KBEngineForUnity\kbe\src\lib\python\Modules\_ctypes\stgdict.c(817,34): warning C4244: “初始化”: 从“Py_ssize_t”转换到“int”，可能丢失数据
+  prep_cif.c
+    正在创建库 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_ctypes_d.lib 和对象 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_ctypes_d.exp
+  _ctypes.vcxproj -> F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_ctypes_d.pyd

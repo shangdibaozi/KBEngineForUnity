@@ -40,7 +40,7 @@ compatibility with older versions, see the :ref:`call-function-trio` section.
 .. function:: run(args, *, stdin=None, input=None, stdout=None, stderr=None,\
                   capture_output=False, shell=False, cwd=None, timeout=None, \
                   check=False, encoding=None, errors=None, text=None, env=None, \
-                  universal_newlines=None)
+                  universal_newlines=None, **other_popen_kwargs)
 
    Run the command described by *args*.  Wait for command to complete, then
    return a :class:`CompletedProcess` instance.
@@ -55,7 +55,9 @@ compatibility with older versions, see the :ref:`call-function-trio` section.
    If *capture_output* is true, stdout and stderr will be captured.
    When used, the internal :class:`Popen` object is automatically created with
    ``stdout=PIPE`` and ``stderr=PIPE``. The *stdout* and *stderr* arguments may
-   not be used as well.
+   not be supplied at the same time as *capture_output*.  If you wish to capture
+   and combine both streams into one, use ``stdout=PIPE`` and ``stderr=STDOUT``
+   instead of *capture_output*.
 
    The *timeout* argument is passed to :meth:`Popen.communicate`. If the timeout
    expires, the child process will be killed and waited for.  The
@@ -352,14 +354,20 @@ functions.
    arguments for additional differences from the default behavior.  Unless
    otherwise stated, it is recommended to pass *args* as a sequence.
 
+   An example of passing some arguments to an external program
+   as a sequence is::
+
+     Popen(["/usr/bin/git", "commit", "-m", "Fixes a bug."])
+
    On POSIX, if *args* is a string, the string is interpreted as the name or
    path of the program to execute.  However, this can only be done if not
    passing arguments to the program.
 
    .. note::
 
-      :meth:`shlex.split` can be useful when determining the correct
-      tokenization for *args*, especially in complex cases::
+      It may not be obvious how to break a shell command into a sequence of arguments,
+      especially in complex cases. :meth:`shlex.split` can illustrate how to
+      determine the correct tokenization for *args*::
 
          >>> import shlex, subprocess
          >>> command_line = input()
@@ -703,14 +711,14 @@ Instances of the :class:`Popen` class have the following methods:
 
 .. method:: Popen.terminate()
 
-   Stop the child. On Posix OSs the method sends SIGTERM to the
+   Stop the child. On POSIX OSs the method sends SIGTERM to the
    child. On Windows the Win32 API function :c:func:`TerminateProcess` is called
    to stop the child.
 
 
 .. method:: Popen.kill()
 
-   Kills the child. On Posix OSs the function sends SIGKILL to the child.
+   Kills the child. On POSIX OSs the function sends SIGKILL to the child.
    On Windows :meth:`kill` is an alias for :meth:`terminate`.
 
 
@@ -997,19 +1005,20 @@ Prior to Python 3.5, these three functions comprised the high level API to
 subprocess. You can now use :func:`run` in many cases, but lots of existing code
 calls these functions.
 
-.. function:: call(args, *, stdin=None, stdout=None, stderr=None, shell=False, cwd=None, timeout=None)
+.. function:: call(args, *, stdin=None, stdout=None, stderr=None, \
+                   shell=False, cwd=None, timeout=None, **other_popen_kwargs)
 
    Run the command described by *args*.  Wait for command to complete, then
    return the :attr:`~Popen.returncode` attribute.
 
-   This is equivalent to::
+   Code needing to capture stdout or stderr should use :func:`run` instead:
 
        run(...).returncode
 
-   (except that the *input* and *check* parameters are not supported)
+   To suppress stdout or stderr, supply a value of :data:`DEVNULL`.
 
-   The arguments shown above are merely the most
-   common ones. The full function signature is largely the
+   The arguments shown above are merely some common ones.
+   The full function signature is the
    same as that of the :class:`Popen` constructor - this function passes all
    supplied arguments other than *timeout* directly through to that interface.
 
@@ -1023,21 +1032,23 @@ calls these functions.
    .. versionchanged:: 3.3
       *timeout* was added.
 
-.. function:: check_call(args, *, stdin=None, stdout=None, stderr=None, shell=False, cwd=None, timeout=None)
+.. function:: check_call(args, *, stdin=None, stdout=None, stderr=None, \
+                         shell=False, cwd=None, timeout=None, \
+                         **other_popen_kwargs)
 
    Run command with arguments.  Wait for command to complete. If the return
    code was zero then return, otherwise raise :exc:`CalledProcessError`. The
    :exc:`CalledProcessError` object will have the return code in the
    :attr:`~CalledProcessError.returncode` attribute.
 
-   This is equivalent to::
+   Code needing to capture stdout or stderr should use :func:`run` instead:
 
        run(..., check=True)
 
-   (except that the *input* parameter is not supported)
+   To suppress stdout or stderr, supply a value of :data:`DEVNULL`.
 
-   The arguments shown above are merely the most
-   common ones. The full function signature is largely the
+   The arguments shown above are merely some common ones.
+   The full function signature is the
    same as that of the :class:`Popen` constructor - this function passes all
    supplied arguments other than *timeout* directly through to that interface.
 
@@ -1054,7 +1065,8 @@ calls these functions.
 
 .. function:: check_output(args, *, stdin=None, stderr=None, shell=False, \
                            cwd=None, encoding=None, errors=None, \
-                           universal_newlines=None, timeout=None, text=None)
+                           universal_newlines=None, timeout=None, text=None, \
+                           **other_popen_kwargs)
 
    Run command with arguments and return its output.
 
@@ -1067,7 +1079,7 @@ calls these functions.
 
        run(..., check=True, stdout=PIPE).stdout
 
-   The arguments shown above are merely the most common ones.
+   The arguments shown above are merely some common ones.
    The full function signature is largely the same as that of :func:`run` -
    most arguments are passed directly through to that interface.
    However, explicitly passing ``input=None`` to inherit the parent's
@@ -1077,8 +1089,9 @@ calls these functions.
    encoding of the output data may depend on the command being invoked, so the
    decoding to text will often need to be handled at the application level.
 
-   This behaviour may be overridden by setting *universal_newlines* to
-   ``True`` as described above in :ref:`frequently-used-arguments`.
+   This behaviour may be overridden by setting *text*, *encoding*, *errors*,
+   or *universal_newlines* to ``True`` as described in
+   :ref:`frequently-used-arguments` and :func:`run`.
 
    To also capture standard error in the result, use
    ``stderr=subprocess.STDOUT``::

@@ -39,8 +39,9 @@ or on combining URL components into a URL string.
 
 .. function:: urlparse(urlstring, scheme='', allow_fragments=True)
 
-   Parse a URL into six components, returning a 6-tuple.  This corresponds to the
-   general structure of a URL: ``scheme://netloc/path;parameters?query#fragment``.
+   Parse a URL into six components, returning a 6-item :term:`named tuple`.  This
+   corresponds to the general structure of a URL:
+   ``scheme://netloc/path;parameters?query#fragment``.
    Each tuple item is a string, possibly empty. The components are not broken up in
    smaller parts (for example, the network location is a single string), and %
    escapes are not expanded. The delimiters as shown above are not part of the
@@ -88,8 +89,8 @@ or on combining URL components into a URL string.
    or query component, and :attr:`fragment` is set to the empty string in
    the return value.
 
-   The return value is actually an instance of a subclass of :class:`tuple`.  This
-   class has the following additional read-only convenience attributes:
+   The return value is a :term:`named tuple`, which means that its items can
+   be accessed by index or as named attributes, which are:
 
    +------------------+-------+--------------------------+----------------------+
    | Attribute        | Index | Value                    | Value if not present |
@@ -129,6 +130,24 @@ or on combining URL components into a URL string.
    ``#``, ``@``, or ``:`` will raise a :exc:`ValueError`. If the URL is
    decomposed before parsing, no error will be raised.
 
+   As is the case with all named tuples, the subclass has a few additional methods
+   and attributes that are particularly useful. One such method is :meth:`_replace`.
+   The :meth:`_replace` method will return a new ParseResult object replacing specified
+   fields with new values.
+
+   .. doctest::
+      :options: +NORMALIZE_WHITESPACE
+
+       >>> from urllib.parse import urlparse
+       >>> u = urlparse('//www.cwi.nl:80/%7Eguido/Python.html')
+       >>> u
+       ParseResult(scheme='', netloc='www.cwi.nl:80', path='/%7Eguido/Python.html',
+                   params='', query='', fragment='')
+       >>> u._replace(scheme='http')
+       ParseResult(scheme='http', netloc='www.cwi.nl:80', path='/%7Eguido/Python.html',
+                   params='', query='', fragment='')
+
+
    .. versionchanged:: 3.2
       Added IPv6 URL parsing capabilities.
 
@@ -146,7 +165,7 @@ or on combining URL components into a URL string.
       now raise :exc:`ValueError`.
 
 
-.. function:: parse_qs(qs, keep_blank_values=False, strict_parsing=False, encoding='utf-8', errors='replace', max_num_fields=None)
+.. function:: parse_qs(qs, keep_blank_values=False, strict_parsing=False, encoding='utf-8', errors='replace', max_num_fields=None, separator='&')
 
    Parse a query string given as a string argument (data of type
    :mimetype:`application/x-www-form-urlencoded`).  Data are returned as a
@@ -171,6 +190,9 @@ or on combining URL components into a URL string.
    read. If set, then throws a :exc:`ValueError` if there are more than
    *max_num_fields* fields read.
 
+   The optional argument *separator* is the symbol to use for separating the
+   query arguments. It defaults to ``&``.
+
    Use the :func:`urllib.parse.urlencode` function (with the ``doseq``
    parameter set to ``True``) to convert such dictionaries into query
    strings.
@@ -181,8 +203,14 @@ or on combining URL components into a URL string.
    .. versionchanged:: 3.7.2
       Added *max_num_fields* parameter.
 
+   .. versionchanged:: 3.7.10
+      Added *separator* parameter with the default value of ``&``. Python
+      versions earlier than Python 3.7.10 allowed using both ``;`` and ``&`` as
+      query parameter separator. This has been changed to allow only a single
+      separator key, with ``&`` as the default separator.
 
-.. function:: parse_qsl(qs, keep_blank_values=False, strict_parsing=False, encoding='utf-8', errors='replace', max_num_fields=None)
+
+.. function:: parse_qsl(qs, keep_blank_values=False, strict_parsing=False, encoding='utf-8', errors='replace', max_num_fields=None, separator='&')
 
    Parse a query string given as a string argument (data of type
    :mimetype:`application/x-www-form-urlencoded`).  Data are returned as a list of
@@ -206,6 +234,9 @@ or on combining URL components into a URL string.
    read. If set, then throws a :exc:`ValueError` if there are more than
    *max_num_fields* fields read.
 
+   The optional argument *separator* is the symbol to use for separating the
+   query arguments. It defaults to ``&``.
+
    Use the :func:`urllib.parse.urlencode` function to convert such lists of pairs into
    query strings.
 
@@ -214,6 +245,13 @@ or on combining URL components into a URL string.
 
    .. versionchanged:: 3.7.2
       Added *max_num_fields* parameter.
+
+   .. versionchanged:: 3.7.10
+      Added *separator* parameter with the default value of ``&``. Python
+      versions earlier than Python 3.7.10 allowed using both ``;`` and ``&`` as
+      query parameter separator. This has been changed to allow only a single
+      separator key, with ``&`` as the default separator.
+
 
 .. function:: urlunparse(parts)
 
@@ -230,11 +268,13 @@ or on combining URL components into a URL string.
    This should generally be used instead of :func:`urlparse` if the more recent URL
    syntax allowing parameters to be applied to each segment of the *path* portion
    of the URL (see :rfc:`2396`) is wanted.  A separate function is needed to
-   separate the path segments and parameters.  This function returns a 5-tuple:
-   (addressing scheme, network location, path, query, fragment identifier).
+   separate the path segments and parameters.  This function returns a 5-item
+   :term:`named tuple`::
 
-   The return value is actually an instance of a subclass of :class:`tuple`.  This
-   class has the following additional read-only convenience attributes:
+      (addressing scheme, network location, path, query, fragment identifier).
+
+   The return value is a :term:`named tuple`, its items can be accessed by index
+   or as named attributes:
 
    +------------------+-------+-------------------------+----------------------+
    | Attribute        | Index | Value                   | Value if not present |
@@ -330,8 +370,8 @@ or on combining URL components into a URL string.
    string.  If there is no fragment identifier in *url*, return *url* unmodified
    and an empty string.
 
-   The return value is actually an instance of a subclass of :class:`tuple`.  This
-   class has the following additional read-only convenience attributes:
+   The return value is a :term:`named tuple`, its items can be accessed by index
+   or as named attributes:
 
    +------------------+-------+-------------------------+----------------------+
    | Attribute        | Index | Value                   | Value if not present |
@@ -499,7 +539,7 @@ task isn't already covered by the URL parsing functions above.
 
    .. versionchanged:: 3.7
       Moved from :rfc:`2396` to :rfc:`3986` for quoting URL strings. "~" is now
-      included in the set of reserved characters.
+      included in the set of unreserved characters.
 
    The optional *encoding* and *errors* parameters specify how to deal with
    non-ASCII characters, as accepted by the :meth:`str.encode` method.

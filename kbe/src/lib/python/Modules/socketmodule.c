@@ -741,6 +741,17 @@ internal_select(PySocketSockObject *s, int writing, _PyTime_t interval,
     ms = _PyTime_AsMilliseconds(interval, _PyTime_ROUND_CEILING);
     assert(ms <= INT_MAX);
 
+    /* On some OSes, typically BSD-based ones, the timeout parameter of the
+       poll() syscall, when negative, must be exactly INFTIM, where defined,
+       or -1. See issue 37811. */
+    if (ms < 0) {
+#ifdef INFTIM
+        ms = INFTIM;
+#else
+        ms = -1;
+#endif
+    }
+
     Py_BEGIN_ALLOW_THREADS;
     n = poll(&pollfd, 1, (int)ms);
     Py_END_ALLOW_THREADS;
@@ -4102,7 +4113,7 @@ sock_sendto(PySocketSockObject *s, PyObject *args)
             break;
         default:
             PyErr_Format(PyExc_TypeError,
-                         "sendto() takes 2 or 3 arguments (%d given)",
+                         "sendto() takes 2 or 3 arguments (%zd given)",
                          arglen);
             return NULL;
     }
@@ -4642,7 +4653,7 @@ sock_ioctl(PySocketSockObject *s, PyObject *arg)
         return PyLong_FromUnsignedLong(recv); }
 #endif
     default:
-        PyErr_Format(PyExc_ValueError, "invalid ioctl command %d", cmd);
+        PyErr_Format(PyExc_ValueError, "invalid ioctl command %lu", cmd);
         return NULL;
     }
 }

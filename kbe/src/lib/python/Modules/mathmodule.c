@@ -1004,9 +1004,13 @@ math_2(PyObject *args, double (*func) (double, double), const char *funcname)
     if (! PyArg_UnpackTuple(args, funcname, 2, 2, &ox, &oy))
         return NULL;
     x = PyFloat_AsDouble(ox);
-    y = PyFloat_AsDouble(oy);
-    if ((x == -1.0 || y == -1.0) && PyErr_Occurred())
+    if (x == -1.0 && PyErr_Occurred()) {
         return NULL;
+    }
+    y = PyFloat_AsDouble(oy);
+    if (y == -1.0 && PyErr_Occurred()) {
+        return NULL;
+    }
     errno = 0;
     PyFPE_START_PROTECT("in math_2", return 0);
     r = (*func)(x, y);
@@ -2371,8 +2375,8 @@ static PyMethodDef math_methods[] = {
 
 
 PyDoc_STRVAR(module_doc,
-"This module is always available.  It provides access to the\n"
-"mathematical functions defined by the C standard.");
+"This module provides access to the mathematical functions\n"
+"defined by the C standard.");
 
 
 static struct PyModuleDef mathmodule = {

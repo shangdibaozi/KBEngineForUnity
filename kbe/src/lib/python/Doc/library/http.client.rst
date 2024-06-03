@@ -20,7 +20,7 @@ HTTPS protocols.  It is normally not used directly --- the module
 
 .. seealso::
 
-    The `Requests package <http://docs.python-requests.org/>`_
+    The `Requests package <https://requests.readthedocs.io/en/master/>`_
     is recommended for a higher-level HTTP client interface.
 
 .. note::
@@ -93,6 +93,11 @@ The module provides the following classes:
       by default. To revert to the previous, unverified, behavior
       :func:`ssl._create_unverified_context` can be passed to the *context*
       parameter.
+
+   .. versionchanged:: 3.7.4
+      This class now enables TLS 1.3
+      :attr:`ssl.SSLContext.post_handshake_auth` for the default *context* or
+      when *cert_file* is passed with a custom *context*.
 
    .. deprecated:: 3.6
 
@@ -492,8 +497,11 @@ Here is an example session that uses the ``GET`` method::
    >>> # The following example demonstrates reading data in chunks.
    >>> conn.request("GET", "/")
    >>> r1 = conn.getresponse()
-   >>> while not r1.closed:
-   ...     print(r1.read(200))  # 200 bytes
+   >>> while True:
+   ...     chunk = r1.read(200)  # 200 bytes
+   ...     if not chunk:
+   ...          break
+   ...     print(repr(chunk))
    b'<!doctype html>\n<!--[if"...
    ...
    >>> # Example of an invalid request
@@ -539,8 +547,8 @@ Here is an example session that shows how to ``POST`` requests::
 Client side ``HTTP PUT`` requests are very similar to ``POST`` requests. The
 difference lies only the server side where HTTP server will allow resources to
 be created via ``PUT`` request. It should be noted that custom HTTP methods
-+are also handled in :class:`urllib.request.Request` by sending the appropriate
-+method attribute.Here is an example session that shows how to do ``PUT``
+are also handled in :class:`urllib.request.Request` by setting the appropriate
+method attribute. Here is an example session that shows how to send a ``PUT``
 request using http.client::
 
     >>> # This creates an HTTP message

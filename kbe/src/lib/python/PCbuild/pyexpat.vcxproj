@@ -46,33 +46,16 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGUpdate|x64'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGUpdate|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGInstrument|x64'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGInstrument|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
     <TargetExt>.pyd</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>../../../../res/scripts/common/DLLs/</OutDir>
+    <IntDir>../../../_objs\$(ProjectName)_d\</IntDir>
   </PropertyGroup>
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -80,22 +63,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="pyproject.props" />
   </ImportGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>../../../../res/scripts/common/DLLs/</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>../../../../res/scripts/common/DLLs/</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>../../../../res/scripts/common/DLLs/</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)_d\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>../../../../res/scripts/common/DLLs/</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)_d\</IntDir>
-  </PropertyGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
@@ -109,7 +76,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Modules\pyexpat.c" />
-    <ClCompile Include="..\Modules\expat\loadlibrary.c" />
     <ClCompile Include="..\Modules\expat\xmlparse.c" />
     <ClCompile Include="..\Modules\expat\xmlrole.c" />
     <ClCompile Include="..\Modules\expat\xmltok.c" />

@@ -827,14 +827,18 @@ PyImport_AddModule(const char *name)
 static void
 remove_module(PyObject *name)
 {
+    PyObject *type, *value, *traceback;
+    PyErr_Fetch(&type, &value, &traceback);
     PyObject *modules = PyImport_GetModuleDict();
+    if (!PyMapping_HasKey(modules, name)) {
+        goto out;
+    }
     if (PyMapping_DelItem(modules, name) < 0) {
-        if (!PyMapping_HasKey(modules, name)) {
-            return;
-        }
         Py_FatalError("import:  deleting existing key in "
                       "sys.modules failed");
     }
+out:
+    PyErr_Restore(type, value, traceback);
 }
 
 
@@ -953,11 +957,10 @@ exec_code_in_module(PyObject *name, PyObject *module_dict, PyObject *code_object
     Py_DECREF(v);
 
     m = PyImport_GetModule(name);
-    if (m == NULL) {
+    if (m == NULL && !PyErr_Occurred()) {
         PyErr_Format(PyExc_ImportError,
                      "Loaded module %R not found in sys.modules",
                      name);
-        return NULL;
     }
 
     return m;
@@ -1564,22 +1567,20 @@ resolve_name(PyObject *name, PyObject *globals, int level)
             if (dot == -2) {
                 goto error;
             }
-
-            if (dot >= 0) {
-                PyObject *substr = PyUnicode_Substring(package, 0, dot);
-                if (substr == NULL) {
-                    goto error;
-                }
-                Py_SETREF(package, substr);
+            else if (dot == -1) {
+                goto no_parent_error;
             }
+            PyObject *substr = PyUnicode_Substring(package, 0, dot);
+            if (substr == NULL) {
+                goto error;
+            }
+            Py_SETREF(package, substr);
         }
     }
 
     last_dot = PyUnicode_GET_LENGTH(package);
     if (last_dot == 0) {
-        PyErr_SetString(PyExc_ImportError,
-                "attempted relative import with no known parent package");
-        goto error;
+        goto no_parent_error;
     }
 
     for (level_up = 1; level_up < level; level_up += 1) {
@@ -1604,6 +1605,11 @@ resolve_name(PyObject *name, PyObject *globals, int level)
     abs_name = PyUnicode_FromFormat("%U.%U", base, name);
     Py_DECREF(base);
     return abs_name;
+
+  no_parent_error:
+    PyErr_SetString(PyExc_ImportError,
+                     "attempted relative import "
+                     "with no known parent package");
 
   error:
     Py_XDECREF(package);
@@ -1714,6 +1720,10 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
     }
 
     mod = PyImport_GetModule(abs_name);
+    if (mod == NULL && PyErr_Occurred()) {
+        goto error;
+    }
+
     if (mod != NULL && mod != Py_None) {
         _Py_IDENTIFIER(__spec__);
         _Py_IDENTIFIER(_initializing);
@@ -1801,9 +1811,11 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
                 final_mod = PyImport_GetModule(to_return);
                 Py_DECREF(to_return);
                 if (final_mod == NULL) {
-                    PyErr_Format(PyExc_KeyError,
-                                 "%R not in sys.modules as expected",
-                                 to_return);
+                    if (!PyErr_Occurred()) {
+                        PyErr_Format(PyExc_KeyError,
+                                     "%R not in sys.modules as expected",
+                                     to_return);
+                    }
                     goto error;
                 }
             }
@@ -1850,19 +1862,23 @@ PyImport_ImportModuleLevel(const char *name, PyObject *globals, PyObject *locals
 PyObject *
 PyImport_ReloadModule(PyObject *m)
 {
-    _Py_IDENTIFIER(imp);
+    _Py_IDENTIFIER(importlib);
     _Py_IDENTIFIER(reload);
     PyObject *reloaded_module = NULL;
-    PyObject *imp = _PyImport_GetModuleId(&PyId_imp);
-    if (imp == NULL) {
-        imp = PyImport_ImportModule("imp");
-        if (imp == NULL) {
+    PyObject *importlib = _PyImport_GetModuleId(&PyId_importlib);
+    if (importlib == NULL) {
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
+
+        importlib = PyImport_ImportModule("importlib");
+        if (importlib == NULL) {
             return NULL;
         }
     }
 
-    reloaded_module = _PyObject_CallMethodIdObjArgs(imp, &PyId_reload, m, NULL);
-    Py_DECREF(imp);
+    reloaded_module = _PyObject_CallMethodIdObjArgs(importlib, &PyId_reload, m, NULL);
+    Py_DECREF(importlib);
     return reloaded_module;
 }
 

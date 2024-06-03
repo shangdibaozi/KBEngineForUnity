@@ -17,7 +17,7 @@ Objects, values and types
 
 :dfn:`Objects` are Python's abstraction for data.  All data in a Python program
 is represented by objects or by relations between objects. (In a sense, and in
-conformance to Von Neumann's model of a "stored program computer," code is also
+conformance to Von Neumann's model of a "stored program computer", code is also
 represented by objects.)
 
 .. index::
@@ -420,6 +420,11 @@ Mappings
       equal (e.g., ``1`` and ``1.0``) then they can be used interchangeably to index
       the same dictionary entry.
 
+      Dictionaries preserve insertion order, meaning that keys will be produced
+      in the same order they were added sequentially over the dictionary.
+      Replacing an existing key does not change the order, however removing a key
+      and re-inserting it will add it to the end instead of keeping its old place.
+
       Dictionaries are mutable; they can be created by the ``{...}`` notation (see
       section :ref:`dict`).
 
@@ -430,6 +435,11 @@ Mappings
       The extension modules :mod:`dbm.ndbm` and :mod:`dbm.gnu` provide
       additional examples of mapping types, as does the :mod:`collections`
       module.
+
+      .. versionchanged:: 3.7
+         Dictionaries did not preserve insertion order in versions of Python before 3.6.
+         In CPython 3.6, insertion order was preserved, but it was considered
+         an implementation detail at that time rather than a language guarantee.
 
 Callable types
    .. index::
@@ -475,13 +485,13 @@ Callable types
       | :attr:`__doc__`         | The function's documentation  | Writable  |
       |                         | string, or ``None`` if        |           |
       |                         | unavailable; not inherited by |           |
-      |                         | subclasses                    |           |
+      |                         | subclasses.                   |           |
       +-------------------------+-------------------------------+-----------+
-      | :attr:`~definition.\    | The function's name           | Writable  |
+      | :attr:`~definition.\    | The function's name.          | Writable  |
       | __name__`               |                               |           |
       +-------------------------+-------------------------------+-----------+
       | :attr:`~definition.\    | The function's                | Writable  |
-      | __qualname__`           | :term:`qualified name`        |           |
+      | __qualname__`           | :term:`qualified name`.       |           |
       |                         |                               |           |
       |                         | .. versionadded:: 3.3         |           |
       +-------------------------+-------------------------------+-----------+
@@ -493,7 +503,7 @@ Callable types
       |                         | argument values for those     |           |
       |                         | arguments that have defaults, |           |
       |                         | or ``None`` if no arguments   |           |
-      |                         | have a default value          |           |
+      |                         | have a default value.         |           |
       +-------------------------+-------------------------------+-----------+
       | :attr:`__code__`        | The code object representing  | Writable  |
       |                         | the compiled function body.   |           |
@@ -922,8 +932,8 @@ Internal types
       compiled; :attr:`co_firstlineno` is the first line number of the function;
       :attr:`co_lnotab` is a string encoding the mapping from bytecode offsets to
       line numbers (for details see the source code of the interpreter);
-      :attr:`co_stacksize` is the required stack size (including local variables);
-      :attr:`co_flags` is an integer encoding a number of flags for the interpreter.
+      :attr:`co_stacksize` is the required stack size; :attr:`co_flags` is an
+      integer encoding a number of flags for the interpreter.
 
       .. index:: object: generator
 
@@ -1315,9 +1325,9 @@ Basic customization
    Called by the :func:`format` built-in function,
    and by extension, evaluation of :ref:`formatted string literals
    <f-strings>` and the :meth:`str.format` method, to produce a "formatted"
-   string representation of an object. The ``format_spec`` argument is
+   string representation of an object. The *format_spec* argument is
    a string that contains a description of the formatting options desired.
-   The interpretation of the ``format_spec`` argument is up to the type
+   The interpretation of the *format_spec* argument is up to the type
    implementing :meth:`__format__`, however most classes will either
    delegate formatting to one of the built-in types, or use a similar
    formatting option syntax.
@@ -1563,7 +1573,7 @@ not found on a module object through the normal lookup, i.e.
 the module ``__dict__`` before raising an :exc:`AttributeError`. If found,
 it is called with the attribute name and the result is returned.
 
-The ``__dir__`` function should accept no arguments, and return a list of
+The ``__dir__`` function should accept no arguments, and return a sequence of
 strings that represents the names accessible on module. If present, this
 function overrides the standard :func:`dir` search on a module.
 
@@ -1641,8 +1651,22 @@ class' :attr:`~object.__dict__`.
    Called at the time the owning class *owner* is created. The
    descriptor has been assigned to *name*.
 
-   .. versionadded:: 3.6
+   .. note::
 
+      :meth:`__set_name__` is only called implicitly as part of the
+      :class:`type` constructor, so it will need to be called explicitly with
+      the appropriate parameters when a descriptor is added to a class after
+      initial creation::
+
+         class A:
+            pass
+         descr = custom_descriptor()
+         A.attr = descr
+         descr.__set_name__(A, 'attr')
+
+      See :ref:`class-object-creation` for more details.
+
+   .. versionadded:: 3.6
 
 The attribute :attr:`__objclass__` is interpreted by the :mod:`inspect` module
 as specifying the class where this object was defined (setting this
@@ -1783,6 +1807,10 @@ Notes on using *__slots__*
   (the other bases must have empty slot layouts) - violations raise
   :exc:`TypeError`.
 
+* If an iterator is used for *__slots__* then a descriptor is created for each
+  of the iterator's values. However, the *__slots__* attribute will be an empty
+  iterator.
+
 .. _class-customization:
 
 Customizing class creation
@@ -1861,11 +1889,11 @@ passed through to all metaclass operations described below.
 
 When a class definition is executed, the following steps occur:
 
-* MRO entries are resolved
-* the appropriate metaclass is determined
-* the class namespace is prepared
-* the class body is executed
-* the class object is created
+* MRO entries are resolved;
+* the appropriate metaclass is determined;
+* the class namespace is prepared;
+* the class body is executed;
+* the class object is created.
 
 
 Resolving MRO entries
@@ -1889,11 +1917,11 @@ Determining the appropriate metaclass
 
 The appropriate metaclass for a class definition is determined as follows:
 
-* if no bases and no explicit metaclass are given, then :func:`type` is used
+* if no bases and no explicit metaclass are given, then :func:`type` is used;
 * if an explicit metaclass is given and it is *not* an instance of
-  :func:`type`, then it is used directly as the metaclass
+  :func:`type`, then it is used directly as the metaclass;
 * if an instance of :func:`type` is given as the explicit metaclass, or
-  bases are defined, then the most derived metaclass is used
+  bases are defined, then the most derived metaclass is used.
 
 The most derived metaclass is selected from the explicitly specified
 metaclass (if any) and the metaclasses (i.e. ``type(cls)``) of all specified
@@ -1913,7 +1941,10 @@ Preparing the class namespace
 Once the appropriate metaclass has been identified, then the class namespace
 is prepared. If the metaclass has a ``__prepare__`` attribute, it is called
 as ``namespace = metaclass.__prepare__(name, bases, **kwds)`` (where the
-additional keyword arguments, if any, come from the class definition).
+additional keyword arguments, if any, come from the class definition). The
+``__prepare__`` method should be implemented as a :func:`classmethod`. The
+namespace returned by ``__prepare__`` is passed in to ``__new__``, but when
+the final class object is created the namespace is copied into a new ``dict``.
 
 If the metaclass has no ``__prepare__`` attribute, then the class namespace
 is initialised as an empty ordered mapping.
@@ -1981,7 +2012,7 @@ invoked after creating the class object:
 * first, ``type.__new__`` collects all of the descriptors in the class
   namespace that define a :meth:`~object.__set_name__` method;
 * second, all of these ``__set_name__`` methods are called with the class
-  being defined and the assigned name of that particular descriptor; and
+  being defined and the assigned name of that particular descriptor;
 * finally, the :meth:`~object.__init_subclass__` hook is called on the
   immediate parent of the new class in its method resolution order.
 
@@ -2053,7 +2084,7 @@ Emulating generic types
 -----------------------
 
 One can implement the generic class syntax as specified by :pep:`484`
-(for example ``List[int]``) by defining a special method
+(for example ``List[int]``) by defining a special method:
 
 .. classmethod:: object.__class_getitem__(cls, key)
 
@@ -2115,8 +2146,8 @@ operators.  It is recommended that both mappings and sequences implement the
 mappings, ``in`` should search the mapping's keys; for sequences, it should
 search through the values.  It is further recommended that both mappings and
 sequences implement the :meth:`__iter__` method to allow efficient iteration
-through the container; for mappings, :meth:`__iter__` should be the same as
-:meth:`keys`; for sequences, it should iterate through the values.
+through the container; for mappings, :meth:`__iter__` should iterate
+through the object's keys; for sequences, it should iterate through the values.
 
 .. method:: object.__len__(self)
 
@@ -2142,7 +2173,9 @@ through the container; for mappings, :meth:`__iter__` should be the same as
 
    Called to implement :func:`operator.length_hint`. Should return an estimated
    length for the object (which may be greater or less than the actual length).
-   The length must be an integer ``>=`` 0. This method is purely an
+   The length must be an integer ``>=`` 0. The return value may also be
+   :const:`NotImplemented`, which is treated the same as if the
+   ``__length_hint__`` method didn't exist at all. This method is purely an
    optimization and is never required for correctness.
 
    .. versionadded:: 3.4
@@ -2228,9 +2261,9 @@ through the container; for mappings, :meth:`__iter__` should be the same as
 
 
 The membership test operators (:keyword:`in` and :keyword:`not in`) are normally
-implemented as an iteration through a sequence.  However, container objects can
+implemented as an iteration through a container. However, container objects can
 supply the following special method with a more efficient implementation, which
-also does not require the object be a sequence.
+also does not require the object be iterable.
 
 .. method:: object.__contains__(self, item)
 
@@ -2298,7 +2331,7 @@ left undefined.
             object.__rfloordiv__(self, other)
             object.__rmod__(self, other)
             object.__rdivmod__(self, other)
-            object.__rpow__(self, other)
+            object.__rpow__(self, other[, modulo])
             object.__rlshift__(self, other)
             object.__rrshift__(self, other)
             object.__rand__(self, other)

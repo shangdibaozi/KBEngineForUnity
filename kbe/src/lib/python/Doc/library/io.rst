@@ -226,7 +226,7 @@ I/O Base Classes
    implementations represent a file that cannot be read, written or
    seeked.
 
-   Even though :class:`IOBase` does not declare :meth:`read`, :meth:`readinto`,
+   Even though :class:`IOBase` does not declare :meth:`read`
    or :meth:`write` because their signatures will vary, implementations and
    clients should consider those methods part of the interface.  Also,
    implementations may raise a :exc:`ValueError` (or :exc:`UnsupportedOperation`)
@@ -234,9 +234,7 @@ I/O Base Classes
 
    The basic type used for binary data read from or written to a file is
    :class:`bytes`.  Other :term:`bytes-like objects <bytes-like object>` are
-   accepted as method arguments too.  In some cases, such as
-   :meth:`~RawIOBase.readinto`, a writable object such as :class:`bytearray`
-   is required.  Text I/O classes work with :class:`str` data.
+   accepted as method arguments too.  Text I/O classes work with :class:`str` data.
 
    Note that calling any method (even inquiries) on a closed stream is
    undefined.  Implementations may raise :exc:`ValueError` in this case.
@@ -308,7 +306,7 @@ I/O Base Classes
       Note that it's already possible to iterate on file objects using ``for
       line in file: ...`` without calling ``file.readlines()``.
 
-   .. method:: seek(offset[, whence])
+   .. method:: seek(offset, whence=SEEK_SET)
 
       Change the stream position to the given byte *offset*.  *offset* is
       interpreted relative to the position indicated by *whence*.  The default
@@ -405,7 +403,8 @@ I/O Base Classes
 
       Read bytes into a pre-allocated, writable
       :term:`bytes-like object` *b*, and return the
-      number of bytes read.  If the object is in non-blocking mode and no bytes
+      number of bytes read.  For example, *b* might be a :class:`bytearray`.
+      If the object is in non-blocking mode and no bytes
       are available, ``None`` is returned.
 
    .. method:: write(b)
@@ -495,6 +494,7 @@ I/O Base Classes
 
       Read bytes into a pre-allocated, writable
       :term:`bytes-like object` *b* and return the number of bytes read.
+      For example, *b* might be a :class:`bytearray`.
 
       Like :meth:`read`, multiple reads may be issued to the underlying raw
       stream, unless the latter is interactive.
@@ -757,8 +757,7 @@ Text I/O
 .. class:: TextIOBase
 
    Base class for text streams.  This class provides a character and line based
-   interface to stream I/O.  There is no :meth:`readinto` method because
-   Python's character strings are immutable.  It inherits :class:`IOBase`.
+   interface to stream I/O.  It inherits :class:`IOBase`.
    There is no public constructor.
 
    :class:`TextIOBase` provides or overrides these data attributes and
@@ -811,7 +810,7 @@ Text I/O
 
       If *size* is specified, at most *size* characters will be read.
 
-   .. method:: seek(offset[, whence])
+   .. method:: seek(offset, whence=SEEK_SET)
 
       Change the stream position to the given *offset*.  Behaviour depends on
       the *whence* parameter.  The default value for *whence* is
@@ -925,7 +924,7 @@ Text I/O
       *errors*, *newline*, *line_buffering* and *write_through*.
 
       Parameters not specified keep current settings, except
-      ``errors='strict`` is used when *encoding* is specified but
+      ``errors='strict'`` is used when *encoding* is specified but
       *errors* is not specified.
 
       It is not possible to change the encoding or newline if some data
@@ -1048,4 +1047,3 @@ The above implicitly extends to text files, since the :func:`open()` function
 will wrap a buffered object inside a :class:`TextIOWrapper`.  This includes
 standard streams and therefore affects the built-in function :func:`print()` as
 well.
-

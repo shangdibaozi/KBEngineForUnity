@@ -5809,6 +5809,9 @@ os_sched_setaffinity_impl(PyObject *module, pid_t pid, PyObject *mask)
         }
         CPU_SET_S(cpu, setsize, cpu_set);
     }
+    if (PyErr_Occurred()) {
+        goto error;
+    }
     Py_CLEAR(iterator);
 
     if (sched_setaffinity(pid, setsize, cpu_set)) {
@@ -6120,6 +6123,13 @@ os_getpid_impl(PyObject *module)
 }
 #endif /* HAVE_GETPID */
 
+#ifdef NGROUPS_MAX
+#define MAX_GROUPS NGROUPS_MAX
+#else
+    /* defined to be 16 on Solaris7, so this should be a small number */
+#define MAX_GROUPS 64
+#endif
+
 #ifdef HAVE_GETGROUPLIST
 
 /* AC 3.5: funny apple logic below */
@@ -6132,13 +6142,6 @@ Returns a list of groups to which a user belongs.\n\n\
 static PyObject *
 posix_getgrouplist(PyObject *self, PyObject *args)
 {
-#ifdef NGROUPS_MAX
-#define MAX_GROUPS NGROUPS_MAX
-#else
-    /* defined to be 16 on Solaris7, so this should be a small number */
-#define MAX_GROUPS 64
-#endif
-
     const char *user;
     int i, ngroups;
     PyObject *list;
@@ -6147,7 +6150,16 @@ posix_getgrouplist(PyObject *self, PyObject *args)
 #else
     gid_t *groups, basegid;
 #endif
-    ngroups = MAX_GROUPS;
+
+    /*
+     * NGROUPS_MAX is defined by POSIX.1 as the maximum
+     * number of supplimental groups a users can belong to.
+     * We have to increment it by one because
+     * getgrouplist() returns both the supplemental groups
+     * and the primary group, i.e. all of the groups the
+     * user belongs to.
+     */
+    ngroups = 1 + MAX_GROUPS;
 
 #ifdef __APPLE__
     if (!PyArg_ParseTuple(args, "si:getgrouplist", &user, &basegid))
@@ -6158,17 +6170,39 @@ posix_getgrouplist(PyObject *self, PyObject *args)
         return NULL;
 #endif
 
+    while (1) {
 #ifdef __APPLE__
-    groups = PyMem_New(int, ngroups);
+        groups = PyMem_New(int, ngroups);
 #else
-    groups = PyMem_New(gid_t, ngroups);
+        groups = PyMem_New(gid_t, ngroups);
 #endif
-    if (groups == NULL)
-        return PyErr_NoMemory();
+        if (groups == NULL) {
+            return PyErr_NoMemory();
+        }
 
-    if (getgrouplist(user, basegid, groups, &ngroups) == -1) {
-        PyMem_Del(groups);
-        return posix_error();
+        int old_ngroups = ngroups;
+        if (getgrouplist(user, basegid, groups, &ngroups) != -1) {
+            /* Success */
+            break;
+        }
+
+        /* getgrouplist() fails if the group list is too small */
+        PyMem_Free(groups);
+
+        if (ngroups > old_ngroups) {
+            /* If the group list is too small, the glibc implementation of
+               getgrouplist() sets ngroups to the total number of groups and
+               returns -1. */
+        }
+        else {
+            /* Double the group list size */
+            if (ngroups > INT_MAX / 2) {
+                return PyErr_NoMemory();
+            }
+            ngroups *= 2;
+        }
+
+        /* Retry getgrouplist() with a larger group list */
     }
 
 #ifdef _Py_MEMORY_SANITIZER
@@ -6216,13 +6250,6 @@ os_getgroups_impl(PyObject *module)
 /*[clinic end generated code: output=42b0c17758561b56 input=d3f109412e6a155c]*/
 {
     PyObject *result = NULL;
-
-#ifdef NGROUPS_MAX
-#define MAX_GROUPS NGROUPS_MAX
-#else
-    /* defined to be 16 on Solaris7, so this should be a small number */
-#define MAX_GROUPS 64
-#endif
     gid_t grouplist[MAX_GROUPS];
 
     /* On MacOSX getgroups(2) can return more than MAX_GROUPS results
@@ -7100,8 +7127,10 @@ os_waitpid_impl(PyObject *module, intptr_t pid, int options)
     if (res < 0)
         return (!async_err) ? posix_error() : NULL;
 
+    unsigned long long ustatus = (unsigned int)status;
+
     /* shift the status left a byte so this is more like the POSIX waitpid */
-    return Py_BuildValue(_Py_PARSE_INTPTR "i", res, status << 8);
+    return Py_BuildValue(_Py_PARSE_INTPTR "K", res, ustatus << 8);
 }
 #endif
 
@@ -7272,8 +7301,6 @@ win_readlink(PyObject *self, PyObject *args, PyObject *kwargs)
 
 
 
-#ifdef HAVE_SYMLINK
-
 #if defined(MS_WINDOWS)
 
 /* Grab CreateSymbolicLinkW dynamically from kernel32 */
@@ -7311,6 +7338,12 @@ _dirnameW(WCHAR *path)
     *ptr = 0;
     return 0;
 }
+
+#endif
+
+#ifdef HAVE_SYMLINK
+
+#if defined(MS_WINDOWS)
 
 /* Is this path absolute? */
 static int

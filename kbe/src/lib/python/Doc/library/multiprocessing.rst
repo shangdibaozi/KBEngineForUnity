@@ -429,7 +429,8 @@ process which created it.
       >>> def f(x):
       ...     return x*x
       ...
-      >>> p.map(f, [1,2,3])
+      >>> with p:
+      ...   p.map(f, [1,2,3])
       Process PoolWorker-1:
       Process PoolWorker-2:
       Process PoolWorker-3:
@@ -2100,6 +2101,16 @@ with the :class:`Pool` class.
    Note that the methods of the pool object should only be called by
    the process which created the pool.
 
+   .. warning::
+      :class:`multiprocessing.pool` objects have internal resources that need to be
+      properly managed (like any other resource) by using the pool as a context manager
+      or by calling :meth:`close` and :meth:`terminate` manually. Failure to do this
+      can lead to the process hanging on finalization.
+
+      Note that is **not correct** to rely on the garbage colletor to destroy the pool
+      as CPython does not assure that the finalizer of the pool will be called
+      (see :meth:`object.__del__` for more information).
+
    .. versionadded:: 3.2
       *maxtasksperchild*
 
@@ -2142,7 +2153,8 @@ with the :class:`Pool` class.
    .. method:: map(func, iterable[, chunksize])
 
       A parallel equivalent of the :func:`map` built-in function (it supports only
-      one *iterable* argument though).  It blocks until the result is ready.
+      one *iterable* argument though, for multiple iterables see :meth:`starmap`).
+      It blocks until the result is ready.
 
       This method chops the iterable into a number of chunks which it submits to
       the process pool as separate tasks.  The (approximate) size of these
@@ -2251,7 +2263,7 @@ with the :class:`Pool` class.
    .. method:: successful()
 
       Return whether the call completed without raising an exception.  Will
-      raise :exc:`AssertionError` if the result is not ready.
+      raise :exc:`ValueError` if the result is not ready.
 
 The following example demonstrates the use of a pool::
 
@@ -2604,6 +2616,46 @@ The :mod:`multiprocessing.dummy` module
 
 :mod:`multiprocessing.dummy` replicates the API of :mod:`multiprocessing` but is
 no more than a wrapper around the :mod:`threading` module.
+
+.. currentmodule:: multiprocessing.pool
+
+In particular, the ``Pool`` function provided by :mod:`multiprocessing.dummy`
+returns an instance of :class:`ThreadPool`, which is a subclass of
+:class:`Pool` that supports all the same method calls but uses a pool of
+worker threads rather than worker processes.
+
+
+.. class:: ThreadPool([processes[, initializer[, initargs]]])
+
+   A thread pool object which controls a pool of worker threads to which jobs
+   can be submitted.  :class:`ThreadPool` instances are fully interface
+   compatible with :class:`Pool` instances, and their resources must also be
+   properly managed, either by using the pool as a context manager or by
+   calling :meth:`~multiprocessing.pool.Pool.close` and
+   :meth:`~multiprocessing.pool.Pool.terminate` manually.
+
+   *processes* is the number of worker threads to use.  If *processes* is
+   ``None`` then the number returned by :func:`os.cpu_count` is used.
+
+   If *initializer* is not ``None`` then each worker process will call
+   ``initializer(*initargs)`` when it starts.
+
+   Unlike :class:`Pool`, *maxtasksperchild* and *context* cannot be provided.
+
+    .. note::
+
+        A :class:`ThreadPool` shares the same interface as :class:`Pool`, which
+        is designed around a pool of processes and predates the introduction of
+        the :class:`concurrent.futures` module.  As such, it inherits some
+        operations that don't make sense for a pool backed by threads, and it
+        has its own type for representing the status of asynchronous jobs,
+        :class:`AsyncResult`, that is not understood by any other libraries.
+
+        Users should generally prefer to use
+        :class:`concurrent.futures.ThreadPoolExecutor`, which has a simpler
+        interface that was designed around threads from the start, and which
+        returns :class:`concurrent.futures.Future` instances that are
+        compatible with many other libraries, including :mod:`asyncio`.
 
 
 .. _multiprocessing-programming:

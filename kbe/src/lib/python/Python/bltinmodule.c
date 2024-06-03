@@ -2374,9 +2374,11 @@ builtin_sum_impl(PyObject *module, PyObject *iterable, PyObject *start)
             }
             if (PyLong_CheckExact(item)) {
                 long b = PyLong_AsLongAndOverflow(item, &overflow);
-                long x = i_result + b;
-                if (overflow == 0 && ((x^i_result) >= 0 || (x^b) >= 0)) {
-                    i_result = x;
+                if (overflow == 0 &&
+                    (i_result >= 0 ? (b <= LONG_MAX - i_result)
+                                   : (b >= LONG_MIN - i_result)))
+                {
+                    i_result += b;
                     Py_DECREF(item);
                     continue;
                 }
@@ -2673,7 +2675,7 @@ static PyMethodDef zip_methods[] = {
 };
 
 PyDoc_STRVAR(zip_doc,
-"zip(iter1 [,iter2 [...]]) --> zip object\n\
+"zip(*iterables) --> zip object\n\
 \n\
 Return a zip object whose .__next__() method returns a tuple where\n\
 the i-th element comes from the i-th iterable argument.  The .__next__()\n\

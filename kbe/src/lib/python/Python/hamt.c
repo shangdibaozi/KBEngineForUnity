@@ -5,7 +5,7 @@
 #include "internal/hamt.h"
 
 /*
-This file provides an implemention of an immutable mapping using the
+This file provides an implementation of an immutable mapping using the
 Hash Array Mapped Trie (or HAMT) datastructure.
 
 This design allows to have:
@@ -2003,7 +2003,7 @@ hamt_node_array_dump(PyHamtNode_Array *node,
             goto error;
         }
 
-        if (_hamt_dump_format(writer, "%d::\n", i)) {
+        if (_hamt_dump_format(writer, "%zd::\n", i)) {
             goto error;
         }
 

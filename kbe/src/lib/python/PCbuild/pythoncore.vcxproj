@@ -45,29 +45,8 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGUpdate|x64'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGUpdate|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGInstrument|x64'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='PGInstrument|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -94,51 +73,20 @@
     <OutDir>../../../../bin/server\</OutDir>
     <IntDir>../../../_objs\$(ProjectName)_d\</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>../../../../bin/server\</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)_d\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>../../../../bin/server\</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>../../../../bin/server\</OutDir>
-    <IntDir>../../../_objs\$(ProjectName)\</IntDir>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalOptions>/Zm200  %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>../../dependencies/zlib;$(PySourcePath)Python;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(PySourcePath)Python;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="$(IncludeExternals)">$(zlibDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>ZLIB_WINAPI;ZLIB_WINAPI;_Py_HAVE_ZLIB;_USRDLL;Py_BUILD_CORE;Py_ENABLE_SHARED;MS_DLL_ID="$(SysWinVer)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_USRDLL;Py_BUILD_CORE;Py_ENABLE_SHARED;MS_DLL_ID="$(SysWinVer)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="$(IncludeExternals)">_Py_HAVE_ZLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">zlib_d.lib;version.lib;shlwapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">zlib_d.lib;version.lib;shlwapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">zlib.lib;version.lib;shlwapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Release|x64'">zlib.lib;version.lib;shlwapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../../../libs/$(TargetName).lib</ImportLibrary>
-      <ImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../../../libs/$(TargetName).lib</ImportLibrary>
-      <ImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">../../../libs/$(TargetName).lib</ImportLibrary>
-      <ImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release|x64'">../../../libs/$(TargetName).lib</ImportLibrary>
-      <AdditionalLibraryDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../../../libs;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlib_d.lib;version.lib;shlwapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../../../libs;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalLibraryDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">../../../libs;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalLibraryDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">../../../libs;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">xcopy ..\Lib ..\..\..\..\res\scripts\common\Lib /Y /i /e</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">xcopy ..\Lib ..\..\..\..\res\scripts\common\Lib /Y /i /e</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">xcopy ..\Lib ..\..\..\..\res\scripts\common\Lib /Y /i /e</Command>
-    </PostBuildEvent>
-    <PostBuildEvent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">xcopy ..\Lib ..\..\..\..\res\scripts\common\Lib /Y /i /e</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -292,9 +240,7 @@
     <ClInclude Include="$(zlibDir)\zutil.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Modules\zlibmodule.c" />
     <ClCompile Include="..\Modules\_abc.c" />
-    <ClCompile Include="..\Modules\_asynciomodule.c" />
     <ClCompile Include="..\Modules\_bisectmodule.c" />
     <ClCompile Include="..\Modules\_blake2\blake2module.c" />
     <ClCompile Include="..\Modules\_blake2\blake2b_impl.c" />
@@ -525,15 +471,9 @@
   <Target Name="_WarnAboutZlib" BeforeTargets="PrepareForBuild" Condition="!$(IncludeExternals)">
     <Warning Text="Not including zlib is not a supported configuration." />
   </Target>
-  <PropertyGroup>
-    <VCRedistDir>$(VCInstallDir)\Redist\MSVC\$(VCToolsRedistVersion)\</VCRedistDir>
-    <VCRedistDir Condition="$(Platform) == 'Win32'">$(VCRedistDir)x86\</VCRedistDir>
-    <VCRedistDir Condition="$(Platform) != 'Win32'">$(VCRedistDir)$(Platform)\</VCRedistDir>
-  </PropertyGroup>
-  <ItemGroup Condition="$(VCInstallDir) != ''">
-    <VCRuntimeDLL Include="$(VCRedistDir)\**\vcruntime*.dll" />
-  </ItemGroup>
-  <Target Name="_CopyVCRuntime" AfterTargets="Build" Inputs="@(VCRuntimeDLL)" Outputs="$(OutDir)%(Filename)%(Extension)">
+  <Target Name="_CopyVCRuntime" AfterTargets="Build" Inputs="@(VCRuntimeDLL)" Outputs="$(OutDir)%(Filename)%(Extension)" DependsOnTargets="FindVCRuntime">
+    <!-- bpo-38597: When we switch to another VCRuntime DLL, include vcruntime140.dll as well -->
+    <Warning Text="A copy of vcruntime140.dll is also required" Condition="!$(VCToolsRedistVersion.StartsWith(`14.`))" />
     <Copy SourceFiles="%(VCRuntimeDLL.FullPath)" DestinationFolder="$(OutDir)" />
   </Target>
   <Target Name="_CleanVCRuntime" AfterTargets="Clean">

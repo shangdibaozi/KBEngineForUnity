@@ -397,13 +397,16 @@ def _checknetloc(netloc):
     # looking for characters like \u2100 that expand to 'a/c'
     # IDNA uses NFKC equivalence, so normalize for this check
     import unicodedata
-    netloc2 = unicodedata.normalize('NFKC', netloc)
-    if netloc == netloc2:
+    n = netloc.replace('@', '')   # ignore characters already included
+    n = n.replace(':', '')        # but not the surrounding text
+    n = n.replace('#', '')
+    n = n.replace('?', '')
+    netloc2 = unicodedata.normalize('NFKC', n)
+    if n == netloc2:
         return
-    _, _, netloc = netloc.rpartition('@') # anything to the left of '@' is okay
     for c in '/?#@:':
         if c in netloc2:
-            raise ValueError("netloc '" + netloc2 + "' contains invalid " +
+            raise ValueError("netloc '" + netloc + "' contains invalid " +
                              "characters under NFKC normalization")
 
 def urlsplit(url, scheme='', allow_fragments=True):
@@ -640,7 +643,7 @@ def unquote(string, encoding='utf-8', errors='replace'):
 
 
 def parse_qs(qs, keep_blank_values=False, strict_parsing=False,
-             encoding='utf-8', errors='replace', max_num_fields=None):
+             encoding='utf-8', errors='replace', max_num_fields=None, separator='&'):
     """Parse a query given as a string argument.
 
         Arguments:
@@ -664,12 +667,15 @@ def parse_qs(qs, keep_blank_values=False, strict_parsing=False,
         max_num_fields: int. If set, then throws a ValueError if there
             are more than n fields read by parse_qsl().
 
+        separator: str. The symbol to use for separating the query arguments.
+            Defaults to &.
+
         Returns a dictionary.
     """
     parsed_result = {}
     pairs = parse_qsl(qs, keep_blank_values, strict_parsing,
                       encoding=encoding, errors=errors,
-                      max_num_fields=max_num_fields)
+                      max_num_fields=max_num_fields, separator=separator)
     for name, value in pairs:
         if name in parsed_result:
             parsed_result[name].append(value)
@@ -679,7 +685,7 @@ def parse_qs(qs, keep_blank_values=False, strict_parsing=False,
 
 
 def parse_qsl(qs, keep_blank_values=False, strict_parsing=False,
-              encoding='utf-8', errors='replace', max_num_fields=None):
+              encoding='utf-8', errors='replace', max_num_fields=None, separator='&'):
     """Parse a query given as a string argument.
 
         Arguments:
@@ -702,19 +708,25 @@ def parse_qsl(qs, keep_blank_values=False, strict_parsing=False,
         max_num_fields: int. If set, then throws a ValueError
             if there are more than n fields read by parse_qsl().
 
+        separator: str. The symbol to use for separating the query arguments.
+            Defaults to &.
+
         Returns a list, as G-d intended.
     """
     qs, _coerce_result = _coerce_args(qs)
+
+    if not separator or (not isinstance(separator, (str, bytes))):
+        raise ValueError("Separator must be of type string or bytes.")
 
     # If max_num_fields is defined then check that the number of fields
     # is less than max_num_fields. This prevents a memory exhaustion DOS
     # attack via post bodies with many fields.
     if max_num_fields is not None:
-        num_fields = 1 + qs.count('&') + qs.count(';')
+        num_fields = 1 + qs.count(separator)
         if max_num_fields < num_fields:
             raise ValueError('Max number of fields exceeded')
 
-    pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
+    pairs = [s1 for s1 in qs.split(separator)]
     r = []
     for name_value in pairs:
         if not name_value and not strict_parsing:
@@ -780,25 +792,32 @@ def quote(string, safe='/', encoding=None, errors=None):
     """quote('abc def') -> 'abc%20def'
 
     Each part of a URL, e.g. the path info, the query, etc., has a
-    different set of reserved characters that must be quoted.
+    different set of reserved characters that must be quoted. The
+    quote function offers a cautious (not minimal) way to quote a
+    string for most of these parts.
 
-    RFC 3986 Uniform Resource Identifiers (URI): Generic Syntax lists
-    the following reserved characters.
+    RFC 3986 Uniform Resource Identifier (URI): Generic Syntax lists
+    the following (un)reserved characters.
 
-    reserved    = ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" |
-                  "$" | "," | "~"
+    unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+    reserved      = gen-delims / sub-delims
+    gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+    sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+                  / "*" / "+" / "," / ";" / "="
 
-    Each of these characters is reserved in some component of a URL,
+    Each of the reserved characters is reserved in some component of a URL,
     but not necessarily in all of them.
 
-    Python 3.7 updates from using RFC 2396 to RFC 3986 to quote URL strings.
-    Now, "~" is included in the set of reserved characters.
+    The quote function %-escapes all characters that are neither in the
+    unreserved chars ("always safe") nor the additional chars set via the
+    safe arg.
 
-    By default, the quote function is intended for quoting the path
-    section of a URL.  Thus, it will not encode '/'.  This character
-    is reserved, but in typical usage the quote function is being
-    called on a path where the existing slash characters are used as
-    reserved characters.
+    The default for the safe arg is '/'. The character is reserved, but in
+    typical usage the quote function is being called on a path where the
+    existing slash characters are to be preserved.
+
+    Python 3.7 updates from using RFC 2396 to RFC 3986 to quote URL strings.
+    Now, "~" is included in the set of unreserved characters.
 
     string and safe may be either str or bytes objects. encoding and errors
     must not be specified if string is a bytes object.
@@ -1007,9 +1026,9 @@ def splitport(host):
     """splitport('host:port') --> 'host', 'port'."""
     global _portprog
     if _portprog is None:
-        _portprog = re.compile('(.*):([0-9]*)$', re.DOTALL)
+        _portprog = re.compile('(.*):([0-9]*)', re.DOTALL)
 
-    match = _portprog.match(host)
+    match = _portprog.fullmatch(host)
     if match:
         host, port = match.groups()
         if port:

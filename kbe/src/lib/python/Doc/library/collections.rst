@@ -33,10 +33,10 @@ Python's general purpose built-in containers, :class:`dict`, :class:`list`,
 :class:`UserString`     wrapper around string objects for easier string subclassing
 =====================   ====================================================================
 
-.. versionchanged:: 3.3
+.. deprecated-removed:: 3.3 3.9
     Moved :ref:`collections-abstract-base-classes` to the :mod:`collections.abc` module.
     For backwards compatibility, they continue to be visible in this module through
-    Python 3.7.  Subsequently, they will be removed entirely.
+    Python 3.8.
 
 
 :class:`ChainMap` objects
@@ -162,7 +162,7 @@ environment variables which in turn take precedence over default values::
         parser.add_argument('-u', '--user')
         parser.add_argument('-c', '--color')
         namespace = parser.parse_args()
-        command_line_args = {k:v for k, v in vars(namespace).items() if v}
+        command_line_args = {k: v for k, v in vars(namespace).items() if v is not None}
 
         combined = ChainMap(command_line_args, os.environ, defaults)
         print(combined['color'])
@@ -941,14 +941,14 @@ field names, the method and attribute names start with an underscore.
         >>> Pixel(11, 22, 128, 255, 0)
         Pixel(x=11, y=22, red=128, green=255, blue=0)
 
-.. attribute:: somenamedtuple._fields_defaults
+.. attribute:: somenamedtuple._field_defaults
 
    Dictionary mapping field names to default values.
 
    .. doctest::
 
         >>> Account = namedtuple('Account', ['type', 'balance'], defaults=[0])
-        >>> Account._fields_defaults
+        >>> Account._field_defaults
         {'balance': 0}
         >>> Account('premium')
         Account(type='premium', balance=0)
@@ -959,7 +959,7 @@ function:
     >>> getattr(p, 'x')
     11
 
-To convert a dictionary to a named tuple, use the double-star-operator
+To convert a dictionary to a named tuple, use the ``**`` operator
 (as described in :ref:`tut-unpacking-arguments`):
 
     >>> d = {'x': 11, 'y': 22}
@@ -1016,17 +1016,20 @@ customize a prototype instance:
 
 .. seealso::
 
-    * `Recipe for named tuple abstract base class with a metaclass mix-in
-      <https://code.activestate.com/recipes/577629-namedtupleabc-abstract-base-class-mix-in-for-named/>`_
-      by Jan Kaliszewski.  Besides providing an :term:`abstract base class` for
-      named tuples, it also supports an alternate :term:`metaclass`-based
-      constructor that is convenient for use cases where named tuples are being
-      subclassed.
+    * See :class:`typing.NamedTuple` for a way to add type hints for named
+      tuples.  It also provides an elegant notation using the :keyword:`class`
+      keyword::
+
+          class Component(NamedTuple):
+              part_number: int
+              weight: float
+              description: Optional[str] = None
 
     * See :meth:`types.SimpleNamespace` for a mutable namespace based on an
       underlying dictionary instead of a tuple.
 
-    * See :meth:`typing.NamedTuple` for a way to add type hints for named tuples.
+    * The :mod:`dataclasses` module provides a decorator and functions for
+      automatically adding generated special methods to user-defined classes.
 
 
 :class:`OrderedDict` objects

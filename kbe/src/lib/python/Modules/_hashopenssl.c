@@ -32,6 +32,10 @@ module _hashlib
 [clinic start generated code]*/
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=c2b4ff081bac4be1]*/
 
+#ifndef OPENSSL_THREADS
+#  error "OPENSSL_THREADS is not defined, Python requires thread-safe OpenSSL"
+#endif
+
 #define MUNCH_SIZE INT_MAX
 
 #ifndef HASH_OBJ_CONSTRUCTOR
@@ -1073,7 +1077,7 @@ PyInit__hashlib(void)
 {
     PyObject *m, *openssl_md_meth_names;
 
-#ifndef OPENSSL_VERSION_1_1
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
     /* Load all digest algorithms and initialize cpuid */
     OPENSSL_add_all_algorithms_noconf();
     ERR_load_crypto_strings();

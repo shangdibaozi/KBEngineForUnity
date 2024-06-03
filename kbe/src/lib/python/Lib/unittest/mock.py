@@ -25,11 +25,13 @@ __all__ = (
 __version__ = '1.0'
 
 
+import io
 import inspect
 import pprint
 import sys
 import builtins
-from types import ModuleType
+import contextlib
+from types import ModuleType, MethodType
 from functools import wraps, partial
 
 
@@ -59,6 +61,15 @@ def _is_exception(obj):
         isinstance(obj, BaseExceptions) or
         isinstance(obj, type) and issubclass(obj, BaseExceptions)
     )
+
+
+def _extract_mock(obj):
+    # Autospecced functions will return a FunctionType with "mock" attribute
+    # which is the actual mock object that needs to be used.
+    if isinstance(obj, FunctionTypes) and hasattr(obj, 'mock'):
+        return obj.mock
+    else:
+        return obj
 
 
 def _get_signature_object(func, as_instance, eat_self):
@@ -121,6 +132,8 @@ def _copy_func_details(func, funcopy):
 def _callable(obj):
     if isinstance(obj, type):
         return True
+    if isinstance(obj, (staticmethod, classmethod, MethodType)):
+        return _callable(obj.__func__)
     if getattr(obj, '__call__', None) is not None:
         return True
     return False
@@ -320,13 +333,7 @@ class _CallList(list):
 
 
 def _check_and_set_parent(parent, value, name, new_name):
-    # function passed to create_autospec will have mock
-    # attribute attached to which parent must be set
-    if isinstance(value, FunctionTypes):
-        try:
-            value = value.mock
-        except AttributeError:
-            pass
+    value = _extract_mock(value)
 
     if not _is_instance_mock(value):
         return False
@@ -430,10 +437,12 @@ class NonCallableMock(Base):
         Attach a mock as an attribute of this one, replacing its name and
         parent. Calls to the attached mock will be recorded in the
         `method_calls` and `mock_calls` attributes of this one."""
-        mock._mock_parent = None
-        mock._mock_new_parent = None
-        mock._mock_name = ''
-        mock._mock_new_name = None
+        inner_mock = _extract_mock(mock)
+
+        inner_mock._mock_parent = None
+        inner_mock._mock_new_parent = None
+        inner_mock._mock_name = ''
+        inner_mock._mock_new_name = None
 
         setattr(self, attribute, mock)
 
@@ -681,12 +690,14 @@ class NonCallableMock(Base):
         extras = self._mock_methods or []
         from_type = dir(type(self))
         from_dict = list(self.__dict__)
+        from_child_mocks = [
+            m_name for m_name, m_value in self._mock_children.items()
+            if m_value is not _deleted]
 
         from_type = [e for e in from_type if not e.startswith('_')]
         from_dict = [e for e in from_dict if not e.startswith('_') or
                      _is_magic(e)]
-        return sorted(set(extras + from_type + from_dict +
-                          list(self._mock_children)))
+        return sorted(set(extras + from_type + from_dict + from_child_mocks))
 
 
     def __setattr__(self, name, value):
@@ -738,7 +749,7 @@ class NonCallableMock(Base):
 
         obj = self._mock_children.get(name, _missing)
         if name in self.__dict__:
-            super().__delattr__(name)
+            _safe_super(NonCallableMock, self).__delattr__(name)
         elif obj is _deleted:
             raise AttributeError(name)
         if obj is not _missing:
@@ -761,6 +772,39 @@ class NonCallableMock(Base):
         return message % (expected_string, actual_string)
 
 
+    def _get_call_signature_from_name(self, name):
+        """
+        * If call objects are asserted against a method/function like obj.meth1
+        then there could be no name for the call object to lookup. Hence just
+        return the spec_signature of the method/function being asserted against.
+        * If the name is not empty then remove () and split by '.' to get
+        list of names to iterate through the children until a potential
+        match is found. A child mock is created only during attribute access
+        so if we get a _SpecState then no attributes of the spec were accessed
+        and can be safely exited.
+        """
+        if not name:
+            return self._spec_signature
+
+        sig = None
+        names = name.replace('()', '').split('.')
+        children = self._mock_children
+
+        for name in names:
+            child = children.get(name)
+            if child is None or isinstance(child, _SpecState):
+                break
+            else:
+                # If an autospecced object is attached using attach_mock the
+                # child would be a function with mock object as attribute from
+                # which signature has to be derived.
+                child = _extract_mock(child)
+                children = child._mock_children
+                sig = child._spec_signature
+
+        return sig
+
+
     def _call_matcher(self, _call):
         """
         Given a call (or simply an (args, kwargs) tuple), return a
@@ -768,7 +812,12 @@ class NonCallableMock(Base):
         This is a best effort method which relies on the spec's signature,
         if available, or falls back on the arguments themselves.
         """
-        sig = self._spec_signature
+
+        if isinstance(_call, tuple) and len(_call) > 2:
+            sig = self._get_call_signature_from_name(_call[0])
+        else:
+            sig = self._spec_signature
+
         if sig is not None:
             if len(_call) == 2:
                 name = ''
@@ -851,13 +900,20 @@ class NonCallableMock(Base):
         If `any_order` is True then the calls can be in any order, but
         they must all appear in `mock_calls`."""
         expected = [self._call_matcher(c) for c in calls]
-        cause = expected if isinstance(expected, Exception) else None
+        cause = next((e for e in expected if isinstance(e, Exception)), None)
         all_calls = _CallList(self._call_matcher(c) for c in self.mock_calls)
         if not any_order:
             if expected not in all_calls:
+                if cause is None:
+                    problem = 'Calls not found.'
+                else:
+                    problem = ('Error processing expected calls.\n'
+                               'Errors: {}').format(
+                                   [e if isinstance(e, Exception) else None
+                                    for e in expected])
                 raise AssertionError(
-                    'Calls not found.\nExpected: %r\n'
-                    'Actual: %r' % (_CallList(calls), self.mock_calls)
+                    '%s\nExpected: %r\nActual: %r' % (
+                        problem, _CallList(calls), self.mock_calls)
                 ) from cause
             return
 
@@ -1188,13 +1244,9 @@ class _patch(object):
         @wraps(func)
         def patched(*args, **keywargs):
             extra_args = []
-            entered_patchers = []
-
-            exc_info = tuple()
-            try:
+            with contextlib.ExitStack() as exit_stack:
                 for patching in patched.patchings:
-                    arg = patching.__enter__()
-                    entered_patchers.append(patching)
+                    arg = exit_stack.enter_context(patching)
                     if patching.attribute_name is not None:
                         keywargs.update(arg)
                     elif patching.new is DEFAULT:
@@ -1202,19 +1254,6 @@ class _patch(object):
 
                 args += tuple(extra_args)
                 return func(*args, **keywargs)
-            except:
-                if (patching not in entered_patchers and
-                    _is_started(patching)):
-                    # the patcher may have been started, but an exception
-                    # raised whilst entering one of its additional_patchers
-                    entered_patchers.append(patching)
-                # Pass the exception to __exit__
-                exc_info = sys.exc_info()
-                # re-raise the exception
-                raise
-            finally:
-                for patching in reversed(entered_patchers):
-                    patching.__exit__(*exc_info)
 
         patched.patchings = [self]
         return patched
@@ -1356,19 +1395,23 @@ class _patch(object):
 
         self.temp_original = original
         self.is_local = local
-        setattr(self.target, self.attribute, new_attr)
-        if self.attribute_name is not None:
-            extra_args = {}
-            if self.new is DEFAULT:
-                extra_args[self.attribute_name] =  new
-            for patching in self.additional_patchers:
-                arg = patching.__enter__()
-                if patching.new is DEFAULT:
-                    extra_args.update(arg)
-            return extra_args
+        self._exit_stack = contextlib.ExitStack()
+        try:
+            setattr(self.target, self.attribute, new_attr)
+            if self.attribute_name is not None:
+                extra_args = {}
+                if self.new is DEFAULT:
+                    extra_args[self.attribute_name] =  new
+                for patching in self.additional_patchers:
+                    arg = self._exit_stack.enter_context(patching)
+                    if patching.new is DEFAULT:
+                        extra_args.update(arg)
+                return extra_args
 
-        return new
-
+            return new
+        except:
+            if not self.__exit__(*sys.exc_info()):
+                raise
 
     def __exit__(self, *exc_info):
         """Undo the patch."""
@@ -1389,9 +1432,9 @@ class _patch(object):
         del self.temp_original
         del self.is_local
         del self.target
-        for patcher in reversed(self.additional_patchers):
-            if _is_started(patcher):
-                patcher.__exit__(*exc_info)
+        exit_stack = self._exit_stack
+        del self._exit_stack
+        return exit_stack.__exit__(*exc_info)
 
 
     def start(self):
@@ -1409,7 +1452,7 @@ class _patch(object):
             # If the patch hasn't been started this will fail
             pass
 
-        return self.__exit__()
+        return self.__exit__(None, None, None)
 
 
 
@@ -1441,6 +1484,10 @@ def _patch_object(
     When used as a class decorator `patch.object` honours `patch.TEST_PREFIX`
     for choosing which methods to wrap.
     """
+    if type(target) is str:
+        raise TypeError(
+            f"{target!r} must be the actual object to be patched, not a str"
+        )
     getter = lambda: target
     return _patch(
         getter, attribute, new, spec, create,
@@ -1832,10 +1879,10 @@ def _set_return_value(mock, method, name):
         method.return_value = fixed
         return
 
-    return_calulator = _calculate_return_value.get(name)
-    if return_calulator is not None:
+    return_calculator = _calculate_return_value.get(name)
+    if return_calculator is not None:
         try:
-            return_value = return_calulator(mock)
+            return_value = return_calculator(mock)
         except AttributeError:
             # XXXX why do we return AttributeError here?
             #      set it as a side_effect instead?
@@ -2283,7 +2330,7 @@ def _must_skip(spec, entry, is_type):
             continue
         if isinstance(result, (staticmethod, classmethod)):
             return False
-        elif isinstance(getattr(result, '__get__', None), MethodWrapperTypes):
+        elif isinstance(result, FunctionTypes):
             # Normal method => skip if looked up on type
             # (if looked up on instance, self is already skipped)
             return is_type
@@ -2322,32 +2369,15 @@ FunctionTypes = (
     type(ANY.__eq__),
 )
 
-MethodWrapperTypes = (
-    type(ANY.__eq__.__get__),
-)
-
 
 file_spec = None
 
-def _iterate_read_data(read_data):
-    # Helper for mock_open:
-    # Retrieve lines from read_data via a generator so that separate calls to
-    # readline, read, and readlines are properly interleaved
-    sep = b'\n' if isinstance(read_data, bytes) else '\n'
-    data_as_list = [l + sep for l in read_data.split(sep)]
 
-    if data_as_list[-1] == sep:
-        # If the last line ended in a newline, the list comprehension will have an
-        # extra entry that's just a newline.  Remove this.
-        data_as_list = data_as_list[:-1]
+def _to_stream(read_data):
+    if isinstance(read_data, bytes):
+        return io.BytesIO(read_data)
     else:
-        # If there wasn't an extra newline by itself, then the file being
-        # emulated doesn't have a newline to end the last line  remove the
-        # newline that our naive format() added
-        data_as_list[-1] = data_as_list[-1][:-1]
-
-    for line in data_as_list:
-        yield line
+        return io.StringIO(read_data)
 
 
 def mock_open(mock=None, read_data=''):
@@ -2362,20 +2392,23 @@ def mock_open(mock=None, read_data=''):
     `read_data` is a string for the `read`, `readline` and `readlines` of the
     file handle to return.  This is an empty string by default.
     """
+    _read_data = _to_stream(read_data)
+    _state = [_read_data, None]
+
     def _readlines_side_effect(*args, **kwargs):
         if handle.readlines.return_value is not None:
             return handle.readlines.return_value
-        return list(_state[0])
+        return _state[0].readlines(*args, **kwargs)
 
     def _read_side_effect(*args, **kwargs):
         if handle.read.return_value is not None:
             return handle.read.return_value
-        return type(read_data)().join(_state[0])
+        return _state[0].read(*args, **kwargs)
 
-    def _readline_side_effect():
+    def _readline_side_effect(*args, **kwargs):
         yield from _iter_side_effect()
         while True:
-            yield type(read_data)()
+            yield _state[0].readline(*args, **kwargs)
 
     def _iter_side_effect():
         if handle.readline.return_value is not None:
@@ -2383,6 +2416,11 @@ def mock_open(mock=None, read_data=''):
                 yield handle.readline.return_value
         for line in _state[0]:
             yield line
+
+    def _next_side_effect():
+        if handle.readline.return_value is not None:
+            return handle.readline.return_value
+        return next(_state[0])
 
     global file_spec
     if file_spec is None:
@@ -2395,8 +2433,6 @@ def mock_open(mock=None, read_data=''):
     handle = MagicMock(spec=file_spec)
     handle.__enter__.return_value = handle
 
-    _state = [_iterate_read_data(read_data), None]
-
     handle.write.return_value = None
     handle.read.return_value = None
     handle.readline.return_value = None
@@ -2407,9 +2443,10 @@ def mock_open(mock=None, read_data=''):
     handle.readline.side_effect = _state[1]
     handle.readlines.side_effect = _readlines_side_effect
     handle.__iter__.side_effect = _iter_side_effect
+    handle.__next__.side_effect = _next_side_effect
 
     def reset_data(*args, **kwargs):
-        _state[0] = _iterate_read_data(read_data)
+        _state[0] = _to_stream(read_data)
         if handle.readline.side_effect == _state[1]:
             # Only reset the side effect if the user hasn't overridden it.
             _state[1] = _readline_side_effect()

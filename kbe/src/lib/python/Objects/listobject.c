@@ -397,12 +397,16 @@ list_length(PyListObject *a)
 static int
 list_contains(PyListObject *a, PyObject *el)
 {
+    PyObject *item;
     Py_ssize_t i;
     int cmp;
 
-    for (i = 0, cmp = 0 ; cmp == 0 && i < Py_SIZE(a); ++i)
-        cmp = PyObject_RichCompareBool(el, PyList_GET_ITEM(a, i),
-                                           Py_EQ);
+    for (i = 0, cmp = 0 ; cmp == 0 && i < Py_SIZE(a); ++i) {
+        item = PyList_GET_ITEM(a, i);
+        Py_INCREF(item);
+        cmp = PyObject_RichCompareBool(el, item, Py_EQ);
+        Py_DECREF(item);
+    }
     return cmp;
 }
 
@@ -1324,9 +1328,8 @@ gallop_left(MergeState *ms, PyObject *key, PyObject **a, Py_ssize_t n, Py_ssize_
         while (ofs < maxofs) {
             IFLT(a[ofs], key) {
                 lastofs = ofs;
+                assert(ofs <= (PY_SSIZE_T_MAX - 1) / 2);
                 ofs = (ofs << 1) + 1;
-                if (ofs <= 0)                   /* int overflow */
-                    ofs = maxofs;
             }
             else                /* key <= a[hint + ofs] */
                 break;
@@ -1347,9 +1350,8 @@ gallop_left(MergeState *ms, PyObject *key, PyObject **a, Py_ssize_t n, Py_ssize_
                 break;
             /* key <= a[hint - ofs] */
             lastofs = ofs;
+            assert(ofs <= (PY_SSIZE_T_MAX - 1) / 2);
             ofs = (ofs << 1) + 1;
-            if (ofs <= 0)               /* int overflow */
-                ofs = maxofs;
         }
         if (ofs > maxofs)
             ofs = maxofs;
@@ -1415,9 +1417,8 @@ gallop_right(MergeState *ms, PyObject *key, PyObject **a, Py_ssize_t n, Py_ssize
         while (ofs < maxofs) {
             IFLT(key, *(a-ofs)) {
                 lastofs = ofs;
+                assert(ofs <= (PY_SSIZE_T_MAX - 1) / 2);
                 ofs = (ofs << 1) + 1;
-                if (ofs <= 0)                   /* int overflow */
-                    ofs = maxofs;
             }
             else                /* a[hint - ofs] <= key */
                 break;
@@ -1439,9 +1440,8 @@ gallop_right(MergeState *ms, PyObject *key, PyObject **a, Py_ssize_t n, Py_ssize
                 break;
             /* a[hint + ofs] <= key */
             lastofs = ofs;
+            assert(ofs <= (PY_SSIZE_T_MAX - 1) / 2);
             ofs = (ofs << 1) + 1;
-            if (ofs <= 0)               /* int overflow */
-                ofs = maxofs;
         }
         if (ofs > maxofs)
             ofs = maxofs;
@@ -2250,19 +2250,28 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 
             if (key->ob_type != key_type) {
                 keys_are_all_same_type = 0;
-                break;
+                /* If keys are in tuple we must loop over the whole list to make
+                   sure all items are tuples */
+                if (!keys_are_in_tuples) {
+                    break;
+                }
             }
 
-            if (key_type == &PyLong_Type) {
-                if (ints_are_bounded && Py_ABS(Py_SIZE(key)) > 1)
+            if (keys_are_all_same_type) {
+                if (key_type == &PyLong_Type &&
+                    ints_are_bounded &&
+                    Py_ABS(Py_SIZE(key)) > 1) {
+
                     ints_are_bounded = 0;
+                }
+                else if (key_type == &PyUnicode_Type &&
+                         strings_are_latin &&
+                         PyUnicode_KIND(key) != PyUnicode_1BYTE_KIND) {
+
+                        strings_are_latin = 0;
+                    }
+                }
             }
-            else if (key_type == &PyUnicode_Type){
-                if (strings_are_latin &&
-                    PyUnicode_KIND(key) != PyUnicode_1BYTE_KIND)
-                strings_are_latin = 0;
-            }
-        }
 
         /* Choose the best compare, given what we now know about the keys. */
         if (keys_are_all_same_type) {
@@ -2290,10 +2299,12 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
         if (keys_are_in_tuples) {
             /* Make sure we're not dealing with tuples of tuples
              * (remember: here, key_type refers list [key[0] for key in keys]) */
-            if (key_type == &PyTuple_Type)
+            if (key_type == &PyTuple_Type) {
                 ms.tuple_elem_compare = safe_object_compare;
-            else
+            }
+            else {
                 ms.tuple_elem_compare = ms.key_compare;
+            }
 
             ms.key_compare = unsafe_tuple_compare;
         }
@@ -2499,7 +2510,10 @@ list_index_impl(PyListObject *self, PyObject *value, Py_ssize_t start,
             stop = 0;
     }
     for (i = start; i < stop && i < Py_SIZE(self); i++) {
-        int cmp = PyObject_RichCompareBool(self->ob_item[i], value, Py_EQ);
+        PyObject *obj = self->ob_item[i];
+        Py_INCREF(obj);
+        int cmp = PyObject_RichCompareBool(obj, value, Py_EQ);
+        Py_DECREF(obj);
         if (cmp > 0)
             return PyLong_FromSsize_t(i);
         else if (cmp < 0)
@@ -2526,7 +2540,14 @@ list_count(PyListObject *self, PyObject *value)
     Py_ssize_t i;
 
     for (i = 0; i < Py_SIZE(self); i++) {
-        int cmp = PyObject_RichCompareBool(self->ob_item[i], value, Py_EQ);
+        PyObject *obj = self->ob_item[i];
+        if (obj == value) {
+           count++;
+           continue;
+        }
+        Py_INCREF(obj);
+        int cmp = PyObject_RichCompareBool(obj, value, Py_EQ);
+        Py_DECREF(obj);
         if (cmp > 0)
             count++;
         else if (cmp < 0)
@@ -2553,7 +2574,10 @@ list_remove(PyListObject *self, PyObject *value)
     Py_ssize_t i;
 
     for (i = 0; i < Py_SIZE(self); i++) {
-        int cmp = PyObject_RichCompareBool(self->ob_item[i], value, Py_EQ);
+        PyObject *obj = self->ob_item[i];
+        Py_INCREF(obj);
+        int cmp = PyObject_RichCompareBool(obj, value, Py_EQ);
+        Py_DECREF(obj);
         if (cmp > 0) {
             if (list_ass_slice(self, i, i+1,
                                (PyObject *)NULL) == 0)
@@ -2599,8 +2623,18 @@ list_richcompare(PyObject *v, PyObject *w, int op)
 
     /* Search for the first index where items are different */
     for (i = 0; i < Py_SIZE(vl) && i < Py_SIZE(wl); i++) {
+        PyObject *vitem = vl->ob_item[i];
+        PyObject *witem = wl->ob_item[i];
+        if (vitem == witem) {
+            continue;
+        }
+
+        Py_INCREF(vitem);
+        Py_INCREF(witem);
         int k = PyObject_RichCompareBool(vl->ob_item[i],
                                          wl->ob_item[i], Py_EQ);
+        Py_DECREF(vitem);
+        Py_DECREF(witem);
         if (k < 0)
             return NULL;
         if (!k)
@@ -2722,7 +2756,8 @@ list_subscript(PyListObject* self, PyObject* item)
         return list_item(self, i);
     }
     else if (PySlice_Check(item)) {
-        Py_ssize_t start, stop, step, slicelength, cur, i;
+        Py_ssize_t start, stop, step, slicelength, i;
+        size_t cur;
         PyObject* result;
         PyObject* it;
         PyObject **src, **dest;
@@ -2858,7 +2893,8 @@ list_ass_subscript(PyListObject* self, PyObject* item, PyObject* value)
             /* assign slice */
             PyObject *ins, *seq;
             PyObject **garbage, **seqitems, **selfitems;
-            Py_ssize_t cur, i;
+            Py_ssize_t i;
+            size_t cur;
 
             /* protect against a[::-1] = a */
             if (self == (PyListObject*)value) {

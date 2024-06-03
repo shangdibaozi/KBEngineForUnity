@@ -178,8 +178,8 @@ are always available.  They are listed here in alphabetical order.
 .. function:: callable(object)
 
    Return :const:`True` if the *object* argument appears callable,
-   :const:`False` if not.  If this returns true, it is still possible that a
-   call fails, but if it is false, calling *object* will never succeed.
+   :const:`False` if not.  If this returns ``True``, it is still possible that a
+   call fails, but if it is ``False``, calling *object* will never succeed.
    Note that classes are callable (calling a class returns a new instance);
    instances are callable if their class has a :meth:`__call__` method.
 
@@ -210,19 +210,18 @@ are always available.  They are listed here in alphabetical order.
           @classmethod
           def f(cls, arg1, arg2, ...): ...
 
-   The ``@classmethod`` form is a function :term:`decorator` -- see the description
-   of function definitions in :ref:`function` for details.
+   The ``@classmethod`` form is a function :term:`decorator` -- see
+   :ref:`function` for details.
 
-   It can be called either on the class (such as ``C.f()``) or on an instance (such
+   A class method can be called either on the class (such as ``C.f()``) or on an instance (such
    as ``C().f()``).  The instance is ignored except for its class. If a class
    method is called for a derived class, the derived class object is passed as the
    implied first argument.
 
    Class methods are different than C++ or Java static methods. If you want those,
-   see :func:`staticmethod` in this section.
+   see :func:`staticmethod`.
 
-   For more information on class methods, consult the documentation on the standard
-   type hierarchy in :ref:`types`.
+   For more information on class methods, see :ref:`types`.
 
 
 .. function:: compile(source, filename, mode, flags=0, dont_inherit=False, optimize=-1)
@@ -427,7 +426,7 @@ are always available.  They are listed here in alphabetical order.
               n += 1
 
 
-.. function:: eval(expression, globals=None, locals=None)
+.. function:: eval(expression[, globals[, locals]])
 
    The arguments are a string and optional globals and locals.  If provided,
    *globals* must be a dictionary.  If provided, *locals* can be any mapping
@@ -778,19 +777,19 @@ are always available.  They are listed here in alphabetical order.
 
 .. function:: isinstance(object, classinfo)
 
-   Return true if the *object* argument is an instance of the *classinfo*
+   Return ``True`` if the *object* argument is an instance of the *classinfo*
    argument, or of a (direct, indirect or :term:`virtual <abstract base
    class>`) subclass thereof.  If *object* is not
-   an object of the given type, the function always returns false.
+   an object of the given type, the function always returns ``False``.
    If *classinfo* is a tuple of type objects (or recursively, other such
-   tuples), return true if *object* is an instance of any of the types.
+   tuples), return ``True`` if *object* is an instance of any of the types.
    If *classinfo* is not a type or tuple of types and such tuples,
    a :exc:`TypeError` exception is raised.
 
 
 .. function:: issubclass(class, classinfo)
 
-   Return true if *class* is a subclass (direct, indirect or :term:`virtual
+   Return ``True`` if *class* is a subclass (direct, indirect or :term:`virtual
    <abstract base class>`) of *classinfo*.  A
    class is considered a subclass of itself. *classinfo* may be a tuple of class
    objects, in which case every entry in *classinfo* will be checked. In any other
@@ -843,7 +842,8 @@ are always available.  They are listed here in alphabetical order.
 
    Update and return a dictionary representing the current local symbol table.
    Free variables are returned by :func:`locals` when it is called in function
-   blocks, but not in class blocks.
+   blocks, but not in class blocks. Note that at the module level, :func:`locals`
+   and :func:`globals` are the same dictionary.
 
    .. note::
       The contents of this dictionary should not be modified; changes may not
@@ -886,7 +886,7 @@ are always available.  They are listed here in alphabetical order.
 
 
 .. _func-memoryview:
-.. function:: memoryview(obj)
+.. class:: memoryview(obj)
    :noindex:
 
    Return a "memory view" object created from the given argument.  See
@@ -1173,7 +1173,7 @@ are always available.  They are listed here in alphabetical order.
 
          * The file is now non-inheritable.
 
-   .. deprecated-removed:: 3.4 4.0
+   .. deprecated-removed:: 3.4 3.9
 
       The ``'U'`` mode.
 
@@ -1319,7 +1319,7 @@ are always available.  They are listed here in alphabetical order.
 
 
 .. _func-range:
-.. function:: range(stop)
+.. class:: range(stop)
               range(start, stop[, step])
    :noindex:
 
@@ -1445,11 +1445,11 @@ are always available.  They are listed here in alphabetical order.
           @staticmethod
           def f(arg1, arg2, ...): ...
 
-   The ``@staticmethod`` form is a function :term:`decorator` -- see the
-   description of function definitions in :ref:`function` for details.
+   The ``@staticmethod`` form is a function :term:`decorator` -- see
+   :ref:`function` for details.
 
-   It can be called either on the class (such as ``C.f()``) or on an instance (such
-   as ``C().f()``).  The instance is ignored except for its class.
+   A static method can be called either on the class (such as ``C.f()``) or on an instance (such
+   as ``C().f()``).
 
    Static methods in Python are similar to those found in Java or C++. Also see
    :func:`classmethod` for a variant that is useful for creating alternate class
@@ -1464,8 +1464,7 @@ are always available.  They are listed here in alphabetical order.
       class C:
           builtin_open = staticmethod(open)
 
-   For more information on static methods, consult the documentation on the
-   standard type hierarchy in :ref:`types`.
+   For more information on static methods, see :ref:`types`.
 
 
 .. index::
@@ -1533,6 +1532,10 @@ are always available.  They are listed here in alphabetical order.
               super().method(arg)    # This does the same thing as:
                                      # super(C, self).method(arg)
 
+   In addition to method lookups, :func:`super` also works for attribute
+   lookups.  One possible use case for this is calling :term:`descriptor`\s
+   in a parent or sibling class.
+
    Note that :func:`super` is implemented as part of the binding process for
    explicit dotted attribute lookups such as ``super().__getitem__(name)``.
    It does so by implementing its own :meth:`__getattribute__` method for searching
@@ -1553,7 +1556,7 @@ are always available.  They are listed here in alphabetical order.
 
 
 .. _func-tuple:
-.. function:: tuple([iterable])
+.. class:: tuple([iterable])
    :noindex:
 
    Rather than being a function, :class:`tuple` is actually an immutable

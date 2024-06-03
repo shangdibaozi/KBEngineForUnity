@@ -147,7 +147,7 @@ extern "C" {
 /* Call a callable Python object 'callable' with arguments given by the
    tuple 'args' and keywords arguments given by the dictionary 'kwargs'.
 
-   'args' must not be *NULL*, use an empty tuple if no arguments are
+   'args' must not be NULL, use an empty tuple if no arguments are
    needed. If no named arguments are needed, 'kwargs' can be NULL.
 
    This is the equivalent of the Python expression:
@@ -220,7 +220,7 @@ PyAPI_FUNC(int) _PyObject_HasFastCall(PyObject *callable);
    If nargs is equal to zero, args can be NULL. kwargs can be NULL.
    nargs must be greater or equal to zero.
 
-   Return the result on success. Raise an exception on return NULL on
+   Return the result on success. Raise an exception and return NULL on
    error. */
 PyAPI_FUNC(PyObject *) _PyObject_FastCallDict(
     PyObject *callable,
@@ -274,9 +274,9 @@ PyAPI_FUNC(PyObject *) _Py_CheckFunctionResult(PyObject *callable,
 
 
 /* Call a callable Python object 'callable', with arguments given by the
-   tuple 'args'.  If no arguments are needed, then 'args' can be *NULL*.
+   tuple 'args'.  If no arguments are needed, then 'args' can be NULL.
 
-   Returns the result of the call on success, or *NULL* on failure.
+   Returns the result of the call on success, or NULL on failure.
 
    This is the equivalent of the Python expression:
    callable(*args). */

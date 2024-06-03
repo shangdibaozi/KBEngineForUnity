@@ -1,0 +1,20 @@
+﻿  Performing Custom Build Tools
+   Assembling: F:\github\KBEngineForUnity\kbe\src\lib\python\Modules\_decimal\libmpdec\vcdiv64.asm
+  _decimal.c
+  basearith.c
+  constants.c
+  context.c
+  convolute.c
+  crt.c
+  difradix2.c
+  fnt.c
+  fourstep.c
+  io.c
+  memory.c
+  mpdecimal.c
+  numbertheory.c
+  sixstep.c
+  transpose.c
+  正在生成代码...
+    正在创建库 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_decimal_d.lib 和对象 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_decimal_d.exp
+  _decimal.vcxproj -> F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_decimal_d.pyd

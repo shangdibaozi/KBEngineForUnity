@@ -1,0 +1,5 @@
+﻿  multiprocessing.c
+  semaphore.c
+  正在生成代码...
+    正在创建库 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_multiprocessing_d.lib 和对象 F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_multiprocessing_d.exp
+  _multiprocessing.vcxproj -> F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\amd64\_multiprocessing_d.pyd

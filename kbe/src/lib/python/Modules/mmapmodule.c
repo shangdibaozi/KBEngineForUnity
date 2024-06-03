@@ -790,7 +790,8 @@ mmap_subscript(mmap_object *self, PyObject *item)
                                               slicelen);
         else {
             char *result_buf = (char *)PyMem_Malloc(slicelen);
-            Py_ssize_t cur, i;
+            size_t cur;
+            Py_ssize_t i;
             PyObject *result;
 
             if (result_buf == NULL)
@@ -910,7 +911,8 @@ mmap_ass_subscript(mmap_object *self, PyObject *item, PyObject *value)
             memcpy(self->data + start, vbuf.buf, slicelen);
         }
         else {
-            Py_ssize_t cur, i;
+            size_t cur;
+            Py_ssize_t i;
 
             for (cur = start, i = 0;
                  i < slicelen;
@@ -1390,7 +1392,8 @@ static void
 setint(PyObject *d, const char *name, long value)
 {
     PyObject *o = PyLong_FromLong(value);
-    if (o && PyDict_SetItemString(d, name, o) == 0) {
+    if (o) {
+        PyDict_SetItemString(d, name, o);
         Py_DECREF(o);
     }
 }

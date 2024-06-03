@@ -4888,6 +4888,13 @@ PyUnicode_DecodeUTF8Stateful(const char *s,
             endinpos = startinpos + 1;
             break;
         case 2:
+            if (consumed && (unsigned char)s[0] == 0xED && end - s == 2
+                && (unsigned char)s[1] >= 0xA0 && (unsigned char)s[1] <= 0xBF)
+            {
+                /* Truncated surrogate code in range D800-DFFF */
+                goto End;
+            }
+            /* fall through */
         case 3:
         case 4:
             errmsg = "invalid continuation byte";
@@ -7078,6 +7085,12 @@ PyUnicode_AsASCIIString(PyObject *unicode)
 #define NEED_RETRY
 #endif
 
+/* INT_MAX is the theoretical largest chunk (or INT_MAX / 2 when
+   transcoding from UTF-16), but INT_MAX / 4 perfoms better in
+   both cases also and avoids partial characters overrunning the
+   length limit in MultiByteToWideChar on Windows */
+#define DECODING_CHUNK_SIZE (INT_MAX/4)
+
 #ifndef WC_ERR_INVALID_CHARS
 #  define WC_ERR_INVALID_CHARS 0x0080
 #endif
@@ -7123,15 +7136,21 @@ decode_code_page_strict(UINT code_page,
                         const char *in,
                         int insize)
 {
-    const DWORD flags = decode_code_page_flags(code_page);
+    DWORD flags = MB_ERR_INVALID_CHARS;
     wchar_t *out;
     DWORD outsize;
 
     /* First get the size of the result */
     assert(insize > 0);
-    outsize = MultiByteToWideChar(code_page, flags, in, insize, NULL, 0);
-    if (outsize <= 0)
-        goto error;
+    while ((outsize = MultiByteToWideChar(code_page, flags,
+                                          in, insize, NULL, 0)) <= 0)
+    {
+        if (!flags || GetLastError() != ERROR_INVALID_FLAGS) {
+            goto error;
+        }
+        /* For some code pages (e.g. UTF-7) flags must be set to 0. */
+        flags = 0;
+    }
 
     if (*v == NULL) {
         /* Create unicode object */
@@ -7177,7 +7196,7 @@ decode_code_page_errors(UINT code_page,
 {
     const char *startin = in;
     const char *endin = in + size;
-    const DWORD flags = decode_code_page_flags(code_page);
+    DWORD flags = MB_ERR_INVALID_CHARS;
     /* Ideally, we should get reason from FormatMessage. This is the Windows
        2000 English version of the message. */
     const char *reason = "No mapping for the Unicode character exists "
@@ -7248,6 +7267,11 @@ decode_code_page_errors(UINT code_page,
             if (outsize > 0)
                 break;
             err = GetLastError();
+            if (err == ERROR_INVALID_FLAGS && flags) {
+                /* For some code pages (e.g. UTF-7) flags must be set to 0. */
+                flags = 0;
+                continue;
+            }
             if (err != ERROR_NO_UNICODE_TRANSLATION
                 && err != ERROR_INSUFFICIENT_BUFFER)
             {
@@ -7327,8 +7351,8 @@ decode_code_page_stateful(int code_page,
     do
     {
 #ifdef NEED_RETRY
-        if (size > INT_MAX) {
-            chunk_size = INT_MAX;
+        if (size > DECODING_CHUNK_SIZE) {
+            chunk_size = DECODING_CHUNK_SIZE;
             final = 0;
             done = 0;
         }
@@ -7730,10 +7754,8 @@ encode_code_page(int code_page,
     do
     {
 #ifdef NEED_RETRY
-        /* UTF-16 encoding may double the size, so use only INT_MAX/2
-           chunks. */
-        if (len > INT_MAX/2) {
-            chunk_len = INT_MAX/2;
+        if (len > DECODING_CHUNK_SIZE) {
+            chunk_len = DECODING_CHUNK_SIZE;
             done = 0;
         }
         else
@@ -12452,14 +12474,14 @@ str.strip as unicode_strip
     chars: object = None
     /
 
-Return a copy of the string with leading and trailing whitespace remove.
+Return a copy of the string with leading and trailing whitespace removed.
 
 If chars is given and not None, remove characters in chars instead.
 [clinic start generated code]*/
 
 static PyObject *
 unicode_strip_impl(PyObject *self, PyObject *chars)
-/*[clinic end generated code: output=ca19018454345d57 input=eefe24a1059c352b]*/
+/*[clinic end generated code: output=ca19018454345d57 input=385289c6f423b954]*/
 {
     return do_argstrip(self, BOTHSTRIP, chars);
 }
@@ -13975,7 +13997,8 @@ unicode_subscript(PyObject* self, PyObject* item)
             i += PyUnicode_GET_LENGTH(self);
         return unicode_getitem(self, i);
     } else if (PySlice_Check(item)) {
-        Py_ssize_t start, stop, step, slicelength, cur, i;
+        Py_ssize_t start, stop, step, slicelength, i;
+        size_t cur;
         PyObject *result;
         void *src_data, *dest_data;
         int src_kind, dest_kind;

@@ -30,8 +30,8 @@ static void _PyMem_SetupDebugHooksDomain(PyMemAllocatorDomain domain);
 
 #if defined(__has_feature)  /* Clang */
 #  if __has_feature(address_sanitizer) /* is ASAN enabled? */
-#    define _Py_NO_ADDRESS_SAFETY_ANALYSIS \
-        __attribute__((no_address_safety_analysis))
+#    define _Py_NO_SANITIZE_ADDRESS \
+        __attribute__((no_sanitize("address")))
 #  endif
 #  if __has_feature(thread_sanitizer)  /* is TSAN enabled? */
 #    define _Py_NO_SANITIZE_THREAD __attribute__((no_sanitize_thread))
@@ -41,18 +41,18 @@ static void _PyMem_SetupDebugHooksDomain(PyMemAllocatorDomain domain);
 #  endif
 #elif defined(__GNUC__)
 #  if defined(__SANITIZE_ADDRESS__)    /* GCC 4.8+, is ASAN enabled? */
-#    define _Py_NO_ADDRESS_SAFETY_ANALYSIS \
-        __attribute__((no_address_safety_analysis))
+#    define _Py_NO_SANITIZE_ADDRESS \
+        __attribute__((no_sanitize_address))
 #  endif
-   // TSAN is supported since GCC 4.8, but __SANITIZE_THREAD__ macro
+   // TSAN is supported since GCC 5.1, but __SANITIZE_THREAD__ macro
    // is provided only since GCC 7.
-#  if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
+#  if __GNUC__ > 5 || (__GNUC__ == 5 && __GNUC_MINOR__ >= 1)
 #    define _Py_NO_SANITIZE_THREAD __attribute__((no_sanitize_thread))
 #  endif
 #endif
 
-#ifndef _Py_NO_ADDRESS_SAFETY_ANALYSIS
-#  define _Py_NO_ADDRESS_SAFETY_ANALYSIS
+#ifndef _Py_NO_SANITIZE_ADDRESS
+#  define _Py_NO_SANITIZE_ADDRESS
 #endif
 #ifndef _Py_NO_SANITIZE_THREAD
 #  define _Py_NO_SANITIZE_THREAD
@@ -788,8 +788,14 @@ static int running_on_valgrind = -1;
  *
  * You shouldn't change this unless you know what you are doing.
  */
+
+#if SIZEOF_VOID_P > 4
+#define ALIGNMENT              16               /* must be 2^N */
+#define ALIGNMENT_SHIFT         4
+#else
 #define ALIGNMENT               8               /* must be 2^N */
 #define ALIGNMENT_SHIFT         3
+#endif
 
 /* Return the number of bytes in size class I, as a uint. */
 #define INDEX2SIZE(I) (((uint)(I) + 1) << ALIGNMENT_SHIFT)
@@ -1344,7 +1350,7 @@ obmalloc controls.  Since this test is needed at every entry point, it's
 extremely desirable that it be this fast.
 */
 
-static bool _Py_NO_ADDRESS_SAFETY_ANALYSIS
+static bool _Py_NO_SANITIZE_ADDRESS
             _Py_NO_SANITIZE_THREAD
             _Py_NO_SANITIZE_MEMORY
 address_in_range(void *p, poolp pool)
@@ -1371,13 +1377,13 @@ address_in_range(void *p, poolp pool)
    block allocations typically result in a couple of instructions).
    Unless the optimizer reorders everything, being too smart...
 
-   Return 1 if pymalloc allocated memory and wrote the pointer into *ptr_p.
+   Return a pointer to newly allocated memory if pymalloc allocated memory.
 
-   Return 0 if pymalloc failed to allocate the memory block: on bigger
+   Return NULL if pymalloc failed to allocate the memory block: on bigger
    requests, on error in the code below (as a last chance to serve the request)
    or when the max memory limit has been reached. */
-static int
-pymalloc_alloc(void *ctx, void **ptr_p, size_t nbytes)
+static void*
+pymalloc_alloc(void *ctx, size_t nbytes)
 {
     block *bp;
     poolp pool;
@@ -1389,15 +1395,15 @@ pymalloc_alloc(void *ctx, void **ptr_p, size_t nbytes)
         running_on_valgrind = RUNNING_ON_VALGRIND;
     }
     if (UNLIKELY(running_on_valgrind)) {
-        return 0;
+        return NULL;
     }
 #endif
 
     if (nbytes == 0) {
-        return 0;
+        return NULL;
     }
     if (nbytes > SMALL_REQUEST_THRESHOLD) {
-        return 0;
+        return NULL;
     }
 
     LOCK();
@@ -1558,20 +1564,19 @@ pymalloc_alloc(void *ctx, void **ptr_p, size_t nbytes)
 success:
     UNLOCK();
     assert(bp != NULL);
-    *ptr_p = (void *)bp;
-    return 1;
+    return (void *)bp;
 
 failed:
     UNLOCK();
-    return 0;
+    return NULL;
 }
 
 
 static void *
 _PyObject_Malloc(void *ctx, size_t nbytes)
 {
-    void* ptr;
-    if (pymalloc_alloc(ctx, &ptr, nbytes)) {
+    void* ptr = pymalloc_alloc(ctx, nbytes);
+    if (ptr != NULL) {
         _Py_AllocatedBlocks++;
         return ptr;
     }
@@ -1587,12 +1592,11 @@ _PyObject_Malloc(void *ctx, size_t nbytes)
 static void *
 _PyObject_Calloc(void *ctx, size_t nelem, size_t elsize)
 {
-    void* ptr;
-
     assert(elsize == 0 || nelem <= (size_t)PY_SSIZE_T_MAX / elsize);
     size_t nbytes = nelem * elsize;
 
-    if (pymalloc_alloc(ctx, &ptr, nbytes)) {
+    void *ptr = pymalloc_alloc(ctx, nbytes);
+    if (ptr != NULL) {
         memset(ptr, 0, nbytes);
         _Py_AllocatedBlocks++;
         return ptr;
@@ -1946,14 +1950,17 @@ _Py_GetAllocatedBlocks(void)
 
 /* Special bytes broadcast into debug memory blocks at appropriate times.
  * Strings of these are unlikely to be valid addresses, floats, ints or
- * 7-bit ASCII.
+ * 7-bit ASCII. If modified, _PyMem_IsPtrFreed() should be updated as well.
+ *
+ * Byte patterns 0xCB, 0xBB and 0xFB have been replaced with 0xCD, 0xDD and
+ * 0xFD to use the same values than Windows CRT debug malloc() and free().
  */
 #undef CLEANBYTE
 #undef DEADBYTE
 #undef FORBIDDENBYTE
-#define CLEANBYTE      0xCB    /* clean (newly allocated) memory */
-#define DEADBYTE       0xDB    /* dead (newly freed) memory */
-#define FORBIDDENBYTE  0xFB    /* untouchable bytes at each end of a block */
+#define CLEANBYTE      0xCD    /* clean (newly allocated) memory */
+#define DEADBYTE       0xDD    /* dead (newly freed) memory */
+#define FORBIDDENBYTE  0xFD    /* untouchable bytes at each end of a block */
 
 static size_t serialno = 0;     /* incremented on each debug {m,re}alloc */
 
@@ -2088,22 +2095,6 @@ _PyMem_DebugRawCalloc(void *ctx, size_t nelem, size_t elsize)
     assert(elsize == 0 || nelem <= (size_t)PY_SSIZE_T_MAX / elsize);
     nbytes = nelem * elsize;
     return _PyMem_DebugRawAlloc(1, ctx, nbytes);
-}
-
-
-/* Heuristic checking if the memory has been freed. Rely on the debug hooks on
-   Python memory allocators which fills the memory with DEADBYTE (0xDB) when
-   memory is deallocated. */
-int
-_PyMem_IsFreed(void *ptr, size_t size)
-{
-    unsigned char *bytes = ptr;
-    for (size_t i=0; i < size; i++) {
-        if (bytes[i] != DEADBYTE) {
-            return 0;
-        }
-    }
-    return 1;
 }
 
 

@@ -32,16 +32,10 @@ parse_qsl_test_cases = [
     (b"&a=b", [(b'a', b'b')]),
     (b"a=a+b&b=b+c", [(b'a', b'a b'), (b'b', b'b c')]),
     (b"a=1&a=2", [(b'a', b'1'), (b'a', b'2')]),
-    (";", []),
-    (";;", []),
-    (";a=b", [('a', 'b')]),
-    ("a=a+b;b=b+c", [('a', 'a b'), ('b', 'b c')]),
-    ("a=1;a=2", [('a', '1'), ('a', '2')]),
-    (b";", []),
-    (b";;", []),
-    (b";a=b", [(b'a', b'b')]),
-    (b"a=a+b;b=b+c", [(b'a', b'a b'), (b'b', b'b c')]),
-    (b"a=1;a=2", [(b'a', b'1'), (b'a', b'2')]),
+    (";a=b", [(';a', 'b')]),
+    ("a=a+b;b=b+c", [('a', 'a b;b=b c')]),
+    (b";a=b", [(b';a', b'b')]),
+    (b"a=a+b;b=b+c", [(b'a', b'a b;b=b c')]),
 ]
 
 # Each parse_qs testcase is a two-tuple that contains
@@ -68,16 +62,10 @@ parse_qs_test_cases = [
     (b"&a=b", {b'a': [b'b']}),
     (b"a=a+b&b=b+c", {b'a': [b'a b'], b'b': [b'b c']}),
     (b"a=1&a=2", {b'a': [b'1', b'2']}),
-    (";", {}),
-    (";;", {}),
-    (";a=b", {'a': ['b']}),
-    ("a=a+b;b=b+c", {'a': ['a b'], 'b': ['b c']}),
-    ("a=1;a=2", {'a': ['1', '2']}),
-    (b";", {}),
-    (b";;", {}),
-    (b";a=b", {b'a': [b'b']}),
-    (b"a=a+b;b=b+c", {b'a': [b'a b'], b'b': [b'b c']}),
-    (b"a=1;a=2", {b'a': [b'1', b'2']}),
+    (";a=b", {';a': ['b']}),
+    ("a=a+b;b=b+c", {'a': ['a b;b=b c']}),
+    (b";a=b", {b';a': [b'b']}),
+    (b"a=a+b;b=b+c", {b'a':[ b'a b;b=b c']}),
 ]
 
 class UrlParseTestCase(unittest.TestCase):
@@ -884,9 +872,45 @@ class UrlParseTestCase(unittest.TestCase):
     def test_parse_qsl_max_num_fields(self):
         with self.assertRaises(ValueError):
             urllib.parse.parse_qs('&'.join(['a=a']*11), max_num_fields=10)
-        with self.assertRaises(ValueError):
-            urllib.parse.parse_qs(';'.join(['a=a']*11), max_num_fields=10)
         urllib.parse.parse_qs('&'.join(['a=a']*10), max_num_fields=10)
+
+    def test_parse_qs_separator(self):
+        parse_qs_semicolon_cases = [
+            (";", {}),
+            (";;", {}),
+            (";a=b", {'a': ['b']}),
+            ("a=a+b;b=b+c", {'a': ['a b'], 'b': ['b c']}),
+            ("a=1;a=2", {'a': ['1', '2']}),
+            (b";", {}),
+            (b";;", {}),
+            (b";a=b", {b'a': [b'b']}),
+            (b"a=a+b;b=b+c", {b'a': [b'a b'], b'b': [b'b c']}),
+            (b"a=1;a=2", {b'a': [b'1', b'2']}),
+        ]
+        for orig, expect in parse_qs_semicolon_cases:
+            with self.subTest(f"Original: {orig!r}, Expected: {expect!r}"):
+                result = urllib.parse.parse_qs(orig, separator=';')
+                self.assertEqual(result, expect, "Error parsing %r" % orig)
+
+
+    def test_parse_qsl_separator(self):
+        parse_qsl_semicolon_cases = [
+            (";", []),
+            (";;", []),
+            (";a=b", [('a', 'b')]),
+            ("a=a+b;b=b+c", [('a', 'a b'), ('b', 'b c')]),
+            ("a=1;a=2", [('a', '1'), ('a', '2')]),
+            (b";", []),
+            (b";;", []),
+            (b";a=b", [(b'a', b'b')]),
+            (b"a=a+b;b=b+c", [(b'a', b'a b'), (b'b', b'b c')]),
+            (b"a=1;a=2", [(b'a', b'1'), (b'a', b'2')]),
+        ]
+        for orig, expect in parse_qsl_semicolon_cases:
+            with self.subTest(f"Original: {orig!r}, Expected: {expect!r}"):
+                result = urllib.parse.parse_qsl(orig, separator=';')
+                self.assertEqual(result, expect, "Error parsing %r" % orig)
+
 
     def test_urlencode_sequences(self):
         # Other tests incidentally urlencode things; test non-covered cases:
@@ -1001,12 +1025,19 @@ class UrlParseTestCase(unittest.TestCase):
         self.assertIn('\u2100', denorm_chars)
         self.assertIn('\uFF03', denorm_chars)
 
+        # bpo-36742: Verify port separators are ignored when they
+        # existed prior to decomposition
+        urllib.parse.urlsplit('http://\u30d5\u309a:80')
+        with self.assertRaises(ValueError):
+            urllib.parse.urlsplit('http://\u30d5\u309a\ufe1380')
+
         for scheme in ["http", "https", "ftp"]:
-            for c in denorm_chars:
-                url = "{}://netloc{}false.netloc/path".format(scheme, c)
-                with self.subTest(url=url, char='{:04X}'.format(ord(c))):
-                    with self.assertRaises(ValueError):
-                        urllib.parse.urlsplit(url)
+            for netloc in ["netloc{}false.netloc", "n{}user@netloc"]:
+                for c in denorm_chars:
+                    url = "{}://{}/path".format(scheme, netloc.format(c))
+                    with self.subTest(url=url, char='{:04X}'.format(ord(c))):
+                        with self.assertRaises(ValueError):
+                            urllib.parse.urlsplit(url)
 
 class Utility_Tests(unittest.TestCase):
     """Testcase to test the various utility functions in the urllib."""

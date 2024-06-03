@@ -1,0 +1,1 @@
+F:\github\KBEngineForUnity\kbe\src\lib\python\PCbuild\obj\37amd64_Debug\_asyncio\pythonnt_rc.h

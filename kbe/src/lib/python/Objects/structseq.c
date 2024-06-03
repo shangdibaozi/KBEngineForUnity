@@ -1,5 +1,11 @@
-/* Implementation helper: a struct that looks like a tuple.  See timemodule
-   and posixmodule for example uses. */
+/* Implementation helper: a struct that looks like a tuple.
+   See timemodule and posixmodule for example uses.
+
+   The structseq helper is considered an internal CPython implementation
+   detail.  Docs for modules using structseqs should call them
+   "named tuples" (be sure to include a space between the two
+   words and add a link back to the term in Docs/glossary.rst).
+*/
 
 #include "Python.h"
 #include "structmember.h"
@@ -182,10 +188,16 @@ structseq_repr(PyStructSequence *obj)
     endofbuf= &buf[REPR_BUFFER_SIZE-5];
 
     /* "typename(", limited to  TYPE_MAXSIZE */
-    len = strlen(typ->tp_name) > TYPE_MAXSIZE ? TYPE_MAXSIZE :
-                            strlen(typ->tp_name);
-    strncpy(pbuf, typ->tp_name, len);
-    pbuf += len;
+    assert(TYPE_MAXSIZE < sizeof(buf));
+    len = strlen(typ->tp_name);
+    if (len <= TYPE_MAXSIZE) {
+        strcpy(pbuf, typ->tp_name);
+        pbuf += len;
+    }
+    else {
+        strncpy(pbuf, typ->tp_name, TYPE_MAXSIZE);
+        pbuf += TYPE_MAXSIZE;
+    }
     *pbuf++ = '(';
 
     for (i=0; i < VISIBLE_SIZE(obj); i++) {
@@ -194,7 +206,7 @@ structseq_repr(PyStructSequence *obj)
 
         cname = typ->tp_members[i].name;
         if (cname == NULL) {
-            PyErr_Format(PyExc_SystemError, "In structseq_repr(), member %d name is NULL"
+            PyErr_Format(PyExc_SystemError, "In structseq_repr(), member %zd name is NULL"
                          " for type %.500s", i, typ->tp_name);
             return NULL;
         }

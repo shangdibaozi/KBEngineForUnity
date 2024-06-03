@@ -1463,7 +1463,6 @@ odict_traverse(PyODictObject *od, visitproc visit, void *arg)
     _ODictNode *node;
 
     Py_VISIT(od->od_inst_dict);
-    Py_VISIT(od->od_weakreflist);
     _odict_FOREACH(od, node) {
         Py_VISIT(_odictnode_KEY(node));
     }
@@ -1476,7 +1475,6 @@ static int
 odict_tp_clear(PyODictObject *od)
 {
     Py_CLEAR(od->od_inst_dict);
-    Py_CLEAR(od->od_weakreflist);
     PyDict_Clear((PyObject *)od);
     _odict_clear_nodes(od);
     return 0;
@@ -1538,7 +1536,7 @@ odict_init(PyObject *self, PyObject *args, PyObject *kwds)
     if (len == -1)
         return -1;
     if (len > 1) {
-        const char *msg = "expected at most 1 arguments, got %d";
+        const char *msg = "expected at most 1 arguments, got %zd";
         PyErr_Format(PyExc_TypeError, msg, len);
         return -1;
     }
@@ -2211,7 +2209,7 @@ mutablemapping_update(PyObject *self, PyObject *args, PyObject *kwargs)
     assert(args == NULL || PyTuple_Check(args));
     len = (args != NULL) ? PyTuple_GET_SIZE(args) : 0;
     if (len > 1) {
-        const char *msg = "update() takes at most 1 positional argument (%d given)";
+        const char *msg = "update() takes at most 1 positional argument (%zd given)";
         PyErr_Format(PyExc_TypeError, msg, len);
         return NULL;
     }

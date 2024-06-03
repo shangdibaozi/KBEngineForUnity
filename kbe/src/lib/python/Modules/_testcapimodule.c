@@ -816,6 +816,26 @@ test_long_as_size_t(PyObject *self)
     return Py_None;
 }
 
+static PyObject *
+test_long_as_unsigned_long_long_mask(PyObject *self,
+                                     PyObject *Py_UNUSED(ignored))
+{
+    unsigned long long res = PyLong_AsUnsignedLongLongMask(NULL);
+
+    if (res != (unsigned long long)-1 || !PyErr_Occurred()) {
+        return raiseTestError("test_long_as_unsigned_long_long_mask",
+                              "PyLong_AsUnsignedLongLongMask(NULL) didn't "
+                              "complain");
+    }
+    if (!PyErr_ExceptionMatches(PyExc_SystemError)) {
+        return raiseTestError("test_long_as_unsigned_long_long_mask",
+                              "PyLong_AsUnsignedLongLongMask(NULL) raised "
+                              "something other than SystemError");
+    }
+    PyErr_Clear();
+    Py_RETURN_NONE;
+}
+
 /* Test the PyLong_AsDouble API. At present this just tests that
    non-integer arguments are handled correctly.
  */
@@ -4175,6 +4195,10 @@ pymem_buffer_overflow(PyObject *self, PyObject *args)
     /* Deliberate buffer overflow to check that PyMem_Free() detects
        the overflow when debug hooks are installed. */
     buffer = PyMem_Malloc(16);
+    if (buffer == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
     buffer[16] = 'x';
     PyMem_Free(buffer);
 
@@ -4220,6 +4244,59 @@ test_pymem_getallocatorsname(PyObject *self, PyObject *args)
         return NULL;
     }
     return PyUnicode_FromString(name);
+}
+
+
+static PyObject*
+pyobject_is_freed(PyObject *self, PyObject *op)
+{
+    int res = _PyObject_IsFreed(op);
+    return PyBool_FromLong(res);
+}
+
+
+static PyObject*
+pyobject_uninitialized(PyObject *self, PyObject *args)
+{
+    PyObject *op = (PyObject *)PyObject_Malloc(sizeof(PyObject));
+    if (op == NULL) {
+        return NULL;
+    }
+    /* Initialize reference count to avoid early crash in ceval or GC */
+    Py_REFCNT(op) = 1;
+    /* object fields like ob_type are uninitialized! */
+    return op;
+}
+
+
+static PyObject*
+pyobject_forbidden_bytes(PyObject *self, PyObject *args)
+{
+    /* Allocate an incomplete PyObject structure: truncate 'ob_type' field */
+    PyObject *op = (PyObject *)PyObject_Malloc(offsetof(PyObject, ob_type));
+    if (op == NULL) {
+        return NULL;
+    }
+    /* Initialize reference count to avoid early crash in ceval or GC */
+    Py_REFCNT(op) = 1;
+    /* ob_type field is after the memory block: part of "forbidden bytes"
+       when using debug hooks on memory allocatrs! */
+    return op;
+}
+
+
+static PyObject*
+pyobject_freed(PyObject *self, PyObject *args)
+{
+    PyObject *op = _PyObject_CallNoArg((PyObject *)&PyBaseObject_Type);
+    if (op == NULL) {
+        return NULL;
+    }
+    Py_TYPE(op)->tp_dealloc(op);
+    /* Reset reference count to avoid early crash in ceval or GC */
+    Py_REFCNT(op) = 1;
+    /* object memory is freed! */
+    return op;
 }
 
 
@@ -4576,6 +4653,19 @@ get_main_config(PyObject *self, PyObject *Py_UNUSED(args))
 }
 
 
+static PyObject*
+pynumber_tobase(PyObject *module, PyObject *args)
+{
+    PyObject *obj;
+    int base;
+    if (!PyArg_ParseTuple(args, "Oi:pynumber_tobase",
+                          &obj, &base)) {
+        return NULL;
+    }
+    return PyNumber_ToBase(obj, base);
+}
+
+
 static PyMethodDef TestMethods[] = {
     {"raise_exception",         raise_exception,                 METH_VARARGS},
     {"raise_memoryerror",   (PyCFunction)raise_memoryerror,  METH_NOARGS},
@@ -4606,6 +4696,8 @@ static PyMethodDef TestMethods[] = {
      METH_NOARGS},
     {"test_long_as_double",     (PyCFunction)test_long_as_double,METH_NOARGS},
     {"test_long_as_size_t",     (PyCFunction)test_long_as_size_t,METH_NOARGS},
+    {"test_long_as_unsigned_long_long_mask",
+            (PyCFunction)test_long_as_unsigned_long_long_mask,   METH_NOARGS},
     {"test_long_numbits",       (PyCFunction)test_long_numbits,  METH_NOARGS},
     {"test_k_code",             (PyCFunction)test_k_code,        METH_NOARGS},
     {"test_empty_argparse", (PyCFunction)test_empty_argparse,METH_NOARGS},
@@ -4784,6 +4876,10 @@ static PyMethodDef TestMethods[] = {
     {"pymem_api_misuse", pymem_api_misuse, METH_NOARGS},
     {"pymem_malloc_without_gil", pymem_malloc_without_gil, METH_NOARGS},
     {"pymem_getallocatorsname", test_pymem_getallocatorsname, METH_NOARGS},
+    {"pyobject_is_freed", (PyCFunction)(void(*)(void))pyobject_is_freed, METH_O},
+    {"pyobject_uninitialized", pyobject_uninitialized, METH_NOARGS},
+    {"pyobject_forbidden_bytes", pyobject_forbidden_bytes, METH_NOARGS},
+    {"pyobject_freed", pyobject_freed, METH_NOARGS},
     {"pyobject_malloc_without_gil", pyobject_malloc_without_gil, METH_NOARGS},
     {"tracemalloc_track", tracemalloc_track, METH_VARARGS},
     {"tracemalloc_untrack", tracemalloc_untrack, METH_VARARGS},
@@ -4805,6 +4901,7 @@ static PyMethodDef TestMethods[] = {
     {"get_global_config", get_global_config, METH_NOARGS},
     {"get_core_config", get_core_config, METH_NOARGS},
     {"get_main_config", get_main_config, METH_NOARGS},
+    {"pynumber_tobase", pynumber_tobase, METH_VARARGS},
     {NULL, NULL} /* sentinel */
 };
 
@@ -5361,11 +5458,14 @@ PyInit__testcapi(void)
     PyModule_AddObject(m, "instancemethod", (PyObject *)&PyInstanceMethod_Type);
 
     PyModule_AddIntConstant(m, "the_number_three", 3);
+    PyObject *v;
 #ifdef WITH_PYMALLOC
-    PyModule_AddObject(m, "WITH_PYMALLOC", Py_True);
+    v = Py_True;
 #else
-    PyModule_AddObject(m, "WITH_PYMALLOC", Py_False);
+    v = Py_False;
 #endif
+    Py_INCREF(v);
+    PyModule_AddObject(m, "WITH_PYMALLOC", v);
 
     TestError = PyErr_NewException("_testcapi.error", NULL, NULL);
     Py_INCREF(TestError);

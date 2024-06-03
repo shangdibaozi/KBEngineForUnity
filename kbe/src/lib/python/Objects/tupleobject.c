@@ -696,8 +696,10 @@ tuple_subtype_new(PyTypeObject *type, PyObject *iterable)
         return NULL;
     assert(PyTuple_Check(tmp));
     newobj = type->tp_alloc(type, n = PyTuple_GET_SIZE(tmp));
-    if (newobj == NULL)
+    if (newobj == NULL) {
+        Py_DECREF(tmp);
         return NULL;
+    }
     for (i = 0; i < n; i++) {
         item = PyTuple_GET_ITEM(tmp, i);
         Py_INCREF(item);
@@ -730,7 +732,8 @@ tuplesubscript(PyTupleObject* self, PyObject* item)
         return tupleitem(self, i);
     }
     else if (PySlice_Check(item)) {
-        Py_ssize_t start, stop, step, slicelength, cur, i;
+        Py_ssize_t start, stop, step, slicelength, i;
+        size_t cur;
         PyObject* result;
         PyObject* it;
         PyObject **src, **dest;

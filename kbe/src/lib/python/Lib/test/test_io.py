@@ -726,6 +726,11 @@ class IOTest(unittest.TestCase):
             file.seek(0)
             file.close()
             self.assertRaises(ValueError, file.read)
+        with self.open(support.TESTFN, "rb") as f:
+            file = self.open(f.fileno(), "rb", closefd=False)
+            self.assertEqual(file.read()[:3], b"egg")
+            file.close()
+            self.assertRaises(ValueError, file.readinto, bytearray(1))
 
     def test_no_closefd_with_filename(self):
         # can't use closefd in combination with a file name
@@ -1104,12 +1109,12 @@ class CommonBufferedTests:
     def test_repr(self):
         raw = self.MockRawIO()
         b = self.tp(raw)
-        clsname = "%s.%s" % (self.tp.__module__, self.tp.__qualname__)
-        self.assertEqual(repr(b), "<%s>" % clsname)
+        clsname = r"(%s\.)?%s" % (self.tp.__module__, self.tp.__qualname__)
+        self.assertRegex(repr(b), "<%s>" % clsname)
         raw.name = "dummy"
-        self.assertEqual(repr(b), "<%s name='dummy'>" % clsname)
+        self.assertRegex(repr(b), "<%s name='dummy'>" % clsname)
         raw.name = b"dummy"
-        self.assertEqual(repr(b), "<%s name=b'dummy'>" % clsname)
+        self.assertRegex(repr(b), "<%s name=b'dummy'>" % clsname)
 
     def test_recursive_repr(self):
         # Issue #25455
@@ -2565,17 +2570,17 @@ class TextIOWrapperTest(unittest.TestCase):
         b = self.BufferedReader(raw)
         t = self.TextIOWrapper(b, encoding="utf-8")
         modname = self.TextIOWrapper.__module__
-        self.assertEqual(repr(t),
-                         "<%s.TextIOWrapper encoding='utf-8'>" % modname)
+        self.assertRegex(repr(t),
+                         r"<(%s\.)?TextIOWrapper encoding='utf-8'>" % modname)
         raw.name = "dummy"
-        self.assertEqual(repr(t),
-                         "<%s.TextIOWrapper name='dummy' encoding='utf-8'>" % modname)
+        self.assertRegex(repr(t),
+                         r"<(%s\.)?TextIOWrapper name='dummy' encoding='utf-8'>" % modname)
         t.mode = "r"
-        self.assertEqual(repr(t),
-                         "<%s.TextIOWrapper name='dummy' mode='r' encoding='utf-8'>" % modname)
+        self.assertRegex(repr(t),
+                         r"<(%s\.)?TextIOWrapper name='dummy' mode='r' encoding='utf-8'>" % modname)
         raw.name = b"dummy"
-        self.assertEqual(repr(t),
-                         "<%s.TextIOWrapper name=b'dummy' mode='r' encoding='utf-8'>" % modname)
+        self.assertRegex(repr(t),
+                         r"<(%s\.)?TextIOWrapper name=b'dummy' mode='r' encoding='utf-8'>" % modname)
 
         t.buffer.detach()
         repr(t)  # Should not raise an exception
@@ -3830,6 +3835,17 @@ class MiscIOTest(unittest.TestCase):
         f.close()
         g.close()
 
+    def test_open_pipe_with_append(self):
+        # bpo-27805: Ignore ESPIPE from lseek() in open().
+        r, w = os.pipe()
+        self.addCleanup(os.close, r)
+        f = self.open(w, 'a')
+        self.addCleanup(f.close)
+        # Check that the file is marked non-seekable. On Windows, however, lseek
+        # somehow succeeds on pipes.
+        if sys.platform != 'win32':
+            self.assertFalse(f.seekable())
+
     def test_io_after_close(self):
         for kwargs in [
                 {"mode": "w"},
@@ -4098,11 +4114,11 @@ class CMiscIOTest(MiscIOTest):
         err = res.err.decode()
         if res.rc != 0:
             # Failure: should be a fatal error
-            self.assertIn("Fatal Python error: could not acquire lock "
-                          "for <_io.BufferedWriter name='<{stream_name}>'> "
-                          "at interpreter shutdown, possibly due to "
-                          "daemon threads".format_map(locals()),
-                          err)
+            pattern = (r"Fatal Python error: could not acquire lock "
+                       r"for <(_io\.)?BufferedWriter name='<{stream_name}>'> "
+                       r"at interpreter shutdown, possibly due to "
+                       r"daemon threads".format_map(locals()))
+            self.assertRegex(err, pattern)
         else:
             self.assertFalse(err.strip('.!'))
 

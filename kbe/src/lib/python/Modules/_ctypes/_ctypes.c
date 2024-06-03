@@ -446,6 +446,9 @@ StructUnionType_new(PyTypeObject *type, PyObject *args, PyObject *kwds, int isSt
         Py_DECREF(result);
         return NULL;
     }
+    if (!isStruct) {
+        dict->flags |= TYPEFLAG_HASUNION;
+    }
     /* replace the class dict by our updated stgdict, which holds info
        about storage requirements of the instances */
     if (-1 == PyDict_Update((PyObject *)dict, result->tp_dict)) {
@@ -1094,7 +1097,11 @@ PyCPointerType_from_param(PyObject *type, PyObject *value)
         */
         StgDictObject *v = PyObject_stgdict(value);
         assert(v); /* Cannot be NULL for pointer or array objects */
-        if (PyObject_IsSubclass(v->proto, typedict->proto)) {
+        int ret = PyObject_IsSubclass(v->proto, typedict->proto);
+        if (ret < 0) {
+            return NULL;
+        }
+        if (ret) {
             Py_INCREF(value);
             return value;
         }
@@ -1466,7 +1473,7 @@ PyCArrayType_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     itemsize = itemdict->size;
-    if (length * itemsize < 0) {
+    if (itemsize != 0 && length > PY_SSIZE_T_MAX / itemsize) {
         PyErr_SetString(PyExc_OverflowError,
                         "array too large");
         goto error;
@@ -1481,6 +1488,7 @@ PyCArrayType_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     stgdict->align = itemalign;
     stgdict->length = length;
     stgdict->proto = type_attr;
+    type_attr = NULL;
 
     stgdict->paramfunc = &PyCArrayType_paramfunc;
 
@@ -2268,7 +2276,54 @@ converters_from_argtypes(PyObject *ob)
 
     for (i = 0; i < nArgs; ++i) {
         PyObject *tp = PyTuple_GET_ITEM(ob, i);
-        PyObject *cnv = PyObject_GetAttrString(tp, "from_param");
+        PyObject *cnv;
+/*
+ *      The following checks, relating to bpo-16575 and bpo-16576, have been
+ *      disabled. The reason is that, although there is a definite problem with
+ *      how libffi handles unions (https://github.com/libffi/libffi/issues/33),
+ *      there are numerous libraries which pass structures containing unions
+ *      by values - especially on Windows but examples also exist on Linux
+ *      (https://bugs.python.org/msg359834).
+ *
+ *      It may not be possible to get proper support for unions and bitfields
+ *      until support is forthcoming in libffi, but for now, adding the checks
+ *      has caused problems in otherwise-working software, which suggests it
+ *      is better to disable the checks.
+ *
+ *      Although specific examples reported relate specifically to unions and
+ *      not bitfields, the bitfields check is also being disabled as a
+ *      precaution.
+
+        StgDictObject *stgdict = PyType_stgdict(tp);
+
+        if (stgdict != NULL) {
+            if (stgdict->flags & TYPEFLAG_HASUNION) {
+                Py_DECREF(converters);
+                Py_DECREF(ob);
+                if (!PyErr_Occurred()) {
+                    PyErr_Format(PyExc_TypeError,
+                                 "item %zd in _argtypes_ passes a union by "
+                                 "value, which is unsupported.",
+                                 i + 1);
+                }
+                return NULL;
+            }
+            if (stgdict->flags & TYPEFLAG_HASBITFIELD) {
+                Py_DECREF(converters);
+                Py_DECREF(ob);
+                if (!PyErr_Occurred()) {
+                    PyErr_Format(PyExc_TypeError,
+                                 "item %zd in _argtypes_ passes a struct/"
+                                 "union with a bitfield by value, which is "
+                                 "unsupported.",
+                                 i + 1);
+                }
+                return NULL;
+            }
+        }
+ */
+
+        cnv = PyObject_GetAttrString(tp, "from_param");
         if (!cnv)
             goto argtypes_error_1;
         PyTuple_SET_ITEM(converters, i, cnv);
@@ -2662,10 +2717,11 @@ PyCData_reduce(PyObject *myself, PyObject *args)
                         "ctypes objects containing pointers cannot be pickled");
         return NULL;
     }
-    return Py_BuildValue("O(O(NN))",
-                         _unpickle,
-                         Py_TYPE(myself),
-                         PyObject_GetAttrString(myself, "__dict__"),
+    PyObject *dict = PyObject_GetAttrString(myself, "__dict__");
+    if (dict == NULL) {
+        return NULL;
+    }
+    return Py_BuildValue("O(O(NN))", _unpickle, Py_TYPE(myself), dict,
                          PyBytes_FromStringAndSize(self->b_ptr, self->b_size));
 }
 
@@ -4370,7 +4426,8 @@ Array_subscript(PyObject *myself, PyObject *item)
         StgDictObject *stgdict, *itemdict;
         PyObject *proto;
         PyObject *np;
-        Py_ssize_t start, stop, step, slicelen, cur, i;
+        Py_ssize_t start, stop, step, slicelen, i;
+        size_t cur;
 
         if (PySlice_Unpack(item, &start, &stop, &step) < 0) {
             return NULL;
@@ -4510,7 +4567,8 @@ Array_ass_subscript(PyObject *myself, PyObject *item, PyObject *value)
         return Array_ass_item(myself, i, value);
     }
     else if (PySlice_Check(item)) {
-        Py_ssize_t start, stop, step, slicelen, otherlen, i, cur;
+        Py_ssize_t start, stop, step, slicelen, otherlen, i;
+        size_t cur;
 
         if (PySlice_Unpack(item, &start, &stop, &step) < 0) {
             return -1;
@@ -5015,7 +5073,8 @@ Pointer_subscript(PyObject *myself, PyObject *item)
         PyObject *np;
         StgDictObject *stgdict, *itemdict;
         PyObject *proto;
-        Py_ssize_t i, len, cur;
+        Py_ssize_t i, len;
+        size_t cur;
 
         /* Since pointers have no length, and we want to apply
            different semantics to negative indices than normal

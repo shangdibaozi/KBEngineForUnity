@@ -167,22 +167,26 @@ PyInterpreterState_New(void)
     interp->pyexitmodule = NULL;
 
     HEAD_LOCK();
-    interp->next = _PyRuntime.interpreters.head;
-    if (_PyRuntime.interpreters.main == NULL) {
-        _PyRuntime.interpreters.main = interp;
-    }
-    _PyRuntime.interpreters.head = interp;
     if (_PyRuntime.interpreters.next_id < 0) {
         /* overflow or Py_Initialize() not called! */
         PyErr_SetString(PyExc_RuntimeError,
                         "failed to get an interpreter ID");
-        /* XXX deallocate! */
+        PyMem_RawFree(interp);
         interp = NULL;
     } else {
         interp->id = _PyRuntime.interpreters.next_id;
         _PyRuntime.interpreters.next_id += 1;
+        interp->next = _PyRuntime.interpreters.head;
+        if (_PyRuntime.interpreters.main == NULL) {
+            _PyRuntime.interpreters.main = interp;
+        }
+        _PyRuntime.interpreters.head = interp;
     }
     HEAD_UNLOCK();
+
+    if (interp == NULL) {
+        return NULL;
+    }
 
     interp->tstate_next_unique_id = 0;
 
@@ -407,12 +411,12 @@ new_threadstate(PyInterpreterState *interp, int init)
         tstate->context = NULL;
         tstate->context_ver = 1;
 
-        tstate->id = ++interp->tstate_next_unique_id;
 
         if (init)
             _PyThreadState_Init(tstate);
 
         HEAD_LOCK();
+        tstate->id = ++interp->tstate_next_unique_id;
         tstate->prev = NULL;
         tstate->next = interp->tstate_head;
         if (tstate->next)
@@ -480,7 +484,7 @@ _PyState_AddModule(PyObject* module, struct PyModuleDef* def)
         if (!state->modules_by_index)
             return -1;
     }
-    while(PyList_GET_SIZE(state->modules_by_index) <= def->m_base.m_index)
+    while (PyList_GET_SIZE(state->modules_by_index) <= def->m_base.m_index)
         if (PyList_Append(state->modules_by_index, Py_None) < 0)
             return -1;
     Py_INCREF(module);
@@ -498,13 +502,11 @@ PyState_AddModule(PyObject* module, struct PyModuleDef* def)
         return -1;
     }
     index = def->m_base.m_index;
-    if (state->modules_by_index) {
-        if(PyList_GET_SIZE(state->modules_by_index) >= index) {
-            if(module == PyList_GET_ITEM(state->modules_by_index, index)) {
-                Py_FatalError("PyState_AddModule: Module already added!");
-                return -1;
-            }
-        }
+    if (state->modules_by_index &&
+        index < PyList_GET_SIZE(state->modules_by_index) &&
+        module == PyList_GET_ITEM(state->modules_by_index, index)) {
+        Py_FatalError("PyState_AddModule: Module already added!");
+        return -1;
     }
     return _PyState_AddModule(module, def);
 }
@@ -564,11 +566,19 @@ _PyState_ClearModules(void)
 void
 PyThreadState_Clear(PyThreadState *tstate)
 {
-    if (Py_VerboseFlag && tstate->frame != NULL)
+    if (Py_VerboseFlag && tstate->frame != NULL) {
+        /* bpo-20526: After the main thread calls
+           _PyRuntimeState_SetFinalizing() in Py_FinalizeEx(), threads must
+           exit when trying to take the GIL. If a thread exit in the middle of
+           _PyEval_EvalFrameDefault(), tstate->frame is not reset to its
+           previous value. It is more likely with daemon threads, but it can
+           happen with regular threads if threading._shutdown() fails
+           (ex: interrupted by CTRL+C). */
         fprintf(stderr,
           "PyThreadState_Clear: warning: thread still has a frame\n");
+    }
 
-    Py_CLEAR(tstate->frame);
+    /* Don't clear tstate->frame: it is a borrowed reference */
 
     Py_CLEAR(tstate->dict);
     Py_CLEAR(tstate->async_exc);
