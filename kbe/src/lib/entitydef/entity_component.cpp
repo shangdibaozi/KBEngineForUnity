@@ -260,6 +260,14 @@ void EntityComponent::onAttached()
 		else
 			SCRIPT_ERROR_CHECK();
 	}
+
+	ScriptDefModule::PROPERTYDESCRIPTION_MAP& propertyDescrs = pComponentDescrs_->getPersistentPropertyDescriptions();
+	auto iter = propertyDescrs.begin();
+	for(; iter != propertyDescrs.end(); ++iter)
+	{
+		auto property = iter->second;
+		filedDirties[property->getUType()] = property->getName();
+	}
 }
 
 //-------------------------------------------------------------------------------------
